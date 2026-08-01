@@ -8,7 +8,14 @@ Four scored decisions will be written here as they are forced by implementation.
 
 ## Decisions
 
-_(none yet — filled during R1–R5 and schema work)_
+### 1. Lost claim is an outcome, not an error
+
+**Context:** A lost claim race is expected concurrency, so treating it as a hard error makes the UI look broken.  
+**Chose:** Atomic `UPDATE … WHERE status='open'`, returning HTTP 200 + `already_claimed` with holder so the UI can notice, update Holder, and disable Claim.  
+**Rejected:** HTTP 409 / thrown `invalid_state` on every loss — fine for strict REST, wrong for a calm triage tool.  
+**Costs:** Clients must branch on `outcome`, not only status codes.  
+**Wrong later:** At higher traffic you’ll want clearer metrics so `already_claimed` isn’t counted as generic success.  
+**Commit:** `5d731c3`
 
 ---
 
@@ -40,3 +47,4 @@ _(one line — filled near ship)_
 | 2.3 | HTTP `POST /api/items/[id]/{claim,resolve,release}` + row buttons; domain stubs not yet atomic/ACL-hardened. |
 | 2.4 | Smoke: list ≤50; claim/release on fixture `itm_test_smoke_claim`; invalid cookie → null userId. |
 | 2.5 | Light Flamingo ODS tokens (pink `#f357bb`, cyan `#058c83`, bg `#fafafa`); mark from flamingo.cx; DM Sans + Azeret Mono. |
+| 3.1 | Atomic `updateMany` where `status=open`; lost race → `already_claimed` result (not thrown), for tooltip UI in 3.3. |

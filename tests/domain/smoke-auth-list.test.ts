@@ -4,7 +4,6 @@ import { PrismaClient } from "@/generated/prisma/client";
 import { claimItem } from "@/lib/triage/claim";
 import { releaseItem } from "@/lib/triage/release";
 import { listItemsForWorkspace, QUEUE_PAGE_SIZE } from "@/lib/triage/list-items";
-import { TriageError } from "@/lib/triage/errors";
 
 const FIXTURE_ITEM_ID = "itm_test_smoke_claim";
 const WORKSPACE_ID = "ws_flamingo";
@@ -54,9 +53,11 @@ describe("auth + list + claim smoke", () => {
   });
 
   it("claims an open fixture item for the signed-in member", async () => {
-    const claimed = await claimItem(FIXTURE_ITEM_ID, USER_ID);
-    expect(claimed.status).toBe("claimed");
-    expect(claimed.claimedById).toBe(USER_ID);
+    const result = await claimItem(FIXTURE_ITEM_ID, USER_ID);
+    expect(result.outcome).toBe("won");
+    if (result.outcome !== "won") return;
+    expect(result.item.status).toBe("claimed");
+    expect(result.item.claimedById).toBe(USER_ID);
 
     await releaseItem(FIXTURE_ITEM_ID, USER_ID);
     const again = await prisma.item.findUniqueOrThrow({
@@ -66,11 +67,16 @@ describe("auth + list + claim smoke", () => {
     expect(again.claimedById).toBeNull();
   });
 
-  it("rejects claim when item is already claimed", async () => {
-    await claimItem(FIXTURE_ITEM_ID, USER_ID);
-    await expect(claimItem(FIXTURE_ITEM_ID, "usr_carol")).rejects.toBeInstanceOf(
-      TriageError,
-    );
+  it("returns already_claimed (not a throw) when item is held", async () => {
+    const first = await claimItem(FIXTURE_ITEM_ID, USER_ID);
+    expect(first.outcome).toBe("won");
+
+    const second = await claimItem(FIXTURE_ITEM_ID, "usr_carol");
+    expect(second.outcome).toBe("already_claimed");
+    if (second.outcome !== "already_claimed") return;
+    expect(second.holder?.id).toBe(USER_ID);
+    expect(second.message.toLowerCase()).toContain("claimed");
+
     await releaseItem(FIXTURE_ITEM_ID, USER_ID);
   });
 });

@@ -20,15 +20,24 @@ export async function POST(_request: Request, { params }: Params) {
   const { id } = await params;
 
   try {
-    const item = await claimItem(id, userId);
+    const result = await claimItem(id, userId);
+
+    if (result.outcome === "won") {
+      return NextResponse.json({
+        ok: true,
+        outcome: "won",
+        item: result.item,
+      });
+    }
+
+    // 200 on purpose — lost claim is a normal concurrency outcome for the UI
+    // (tooltip + refresh holder), not a client/server failure.
     return NextResponse.json({
-      ok: true,
-      item: {
-        id: item.id,
-        status: item.status,
-        claimedById: item.claimedById,
-        claimedByName: item.claimedBy?.name ?? null,
-      },
+      ok: false,
+      outcome: "already_claimed",
+      message: result.message,
+      item: result.item,
+      holder: result.holder,
     });
   } catch (err) {
     if (err instanceof TriageError) {

@@ -41,9 +41,9 @@ Status legend: `[ ]` todo · `[~]` in progress · `[x]` done
 
 | # | Step | Commit message (suggested) | Status |
 |---|------|----------------------------|--------|
-| 3.1 | Atomic claim in DB (conditional update) | `feat(r1): atomic claim — exactly one winner` | [ ] |
-| 3.2 | API returns winner + current holder on loss | `feat(r1): return claim conflict with holder` | [ ] |
-| 3.3 | UI reconciles without manual refresh | `feat(r1): reconcile claim race in UI` | [ ] |
+| 3.1 | Atomic claim in DB (conditional update) | `feat(r1): atomic claim — exactly one winner` | [x] |
+| 3.2 | API returns winner + current holder on loss | `feat(r1): return claim conflict with holder` | [x] |
+| 3.3 | UI reconciles without manual refresh | `feat(r1): reconcile claim race in UI` | [x] |
 | 3.4 | Domain tests: conflict + single holder | `test(r1): claim conflict and single-holder assertions` | [ ] |
 | 3.5 | Parallel concurrency script + README how-to | `test(r1): parallel claim concurrency script` | [ ] |
 
