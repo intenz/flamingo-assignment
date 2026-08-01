@@ -63,7 +63,11 @@ export default async function Home() {
               No membership in this workspace — nothing to show.
             </p>
           ) : (
-            <QueueList items={items} cappedAt={QUEUE_PAGE_SIZE} />
+            <QueueList
+              items={items}
+              cappedAt={QUEUE_PAGE_SIZE}
+              currentUserId={session?.id ?? null}
+            />
           )}
         </section>
       </main>

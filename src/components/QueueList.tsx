@@ -1,8 +1,10 @@
 import type { QueueItemRow } from "@/lib/triage/list-items";
+import { ItemActions } from "@/components/ItemActions";
 
 type Props = {
   items: QueueItemRow[];
   cappedAt: number;
+  currentUserId: string | null;
 };
 
 function holderLabel(item: QueueItemRow): string {
@@ -12,7 +14,7 @@ function holderLabel(item: QueueItemRow): string {
   return "unknown";
 }
 
-export function QueueList({ items, cappedAt }: Props) {
+export function QueueList({ items, cappedAt, currentUserId }: Props) {
   if (items.length === 0) {
     return (
       <p className="rounded border border-dashed border-zinc-300 bg-zinc-50 px-4 py-8 text-center text-sm text-zinc-600">
@@ -23,12 +25,13 @@ export function QueueList({ items, cappedAt }: Props) {
 
   return (
     <div className="overflow-x-auto rounded-lg border border-zinc-200 bg-white">
-      <table className="w-full min-w-[36rem] border-collapse text-left text-sm">
+      <table className="w-full min-w-[44rem] border-collapse text-left text-sm">
         <thead className="border-b border-zinc-200 bg-zinc-50 text-xs uppercase tracking-wide text-zinc-500">
           <tr>
             <th className="px-3 py-2 font-medium">Status</th>
             <th className="px-3 py-2 font-medium">Title</th>
             <th className="px-3 py-2 font-medium">Holder</th>
+            <th className="px-3 py-2 font-medium">Actions</th>
             <th className="px-3 py-2 font-medium">Id</th>
           </tr>
         </thead>
@@ -40,6 +43,9 @@ export function QueueList({ items, cappedAt }: Props) {
               </td>
               <td className="px-3 py-2 font-medium text-zinc-900">{item.title}</td>
               <td className="px-3 py-2 text-zinc-600">{holderLabel(item)}</td>
+              <td className="px-3 py-2">
+                <ItemActions item={item} currentUserId={currentUserId} />
+              </td>
               <td className="px-3 py-2 font-mono text-xs text-zinc-500">{item.id}</td>
             </tr>
           ))}
@@ -47,6 +53,7 @@ export function QueueList({ items, cappedAt }: Props) {
       </table>
       <p className="border-t border-zinc-100 px-3 py-2 text-xs text-zinc-500">
         Showing {items.length} newest (cap {cappedAt}). Keyset / load-more in R4.
+        Claim is not yet race-safe (R1).
       </p>
     </div>
   );
