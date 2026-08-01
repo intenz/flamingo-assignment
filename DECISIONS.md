@@ -36,3 +36,4 @@ _(one line — filled near ship)_
 | 1.3 | Seed via Prisma `createMany` batches; ~82/12/6 status skew; Alice/Bob/Carol/Dave on `ws_flamingo`. Generator `moduleFormat = "cjs"` so tsx/Next see model delegates. |
 | 1.4 | Vitest (node env) + smoke harness; `test:r1` stub until claim API exists. Same `DATABASE_URL` as app for now. |
 | 2.1 | HMAC-SHA256 signed `flamingo_session` cookie; login/logout via Server Actions; picker shows role from `ws_flamingo`. |
+| 2.2 | Queue RSC lists first 50 newest via `listItemsForWorkspace`; unsigned → prompt; no membership → error. |
