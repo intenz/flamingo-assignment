@@ -2,8 +2,9 @@
 // IDs are opaque strings (e.g. usr_alice, itm_…); assigned in seed / app code.
 
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs"
 }
 
 datasource db {

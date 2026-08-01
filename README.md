@@ -15,11 +15,24 @@ npm install
 npm run db:up          # local Prisma Postgres (detached)
 # if the printed port differs from .env, update DATABASE_URL
 npm run db:generate
+npm run db:migrate
+npm run db:seed
 npm run dev
 ```
+
+### Seeded users (`ws_flamingo`)
+
+| id | name | role |
+|----|------|------|
+| `usr_alice` | Alice Owner | owner |
+| `usr_bob` | Bob Member | member |
+| `usr_carol` | Carol Member | member |
+| `usr_dave` | Dave Viewer | viewer |
+
+~10 000 items: ~82% open / ~12% claimed / ~6% resolved.
 
 **Database (dev):** local via `prisma dev` (`npm run db:up` / `db:down`). Supabase can replace `DATABASE_URL` later for deploy.
 
 ## Status
 
-Prisma 7 + local Postgres ready. Schema models land in step 1.2.
+Schema + seed done. Auth / queue UI next (phase 2).

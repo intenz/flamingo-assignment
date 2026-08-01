@@ -33,3 +33,4 @@ _(one line — filled near ship)_
 | 1.1 | Prisma 7 + `@prisma/adapter-pg`; client singleton at `src/lib/prisma.ts`. Generated client under `src/generated/prisma` (gitignored). |
 | 1.1b | Dev DB is **local** `prisma dev` (not Supabase yet). Port may change after restart — sync `DATABASE_URL`. Supabase later for Vercel. |
 | 1.2 | Opaque string IDs; MembershipRole + ItemStatus enums; NotifyOutbox deferred to R3. Indexes for workspace queue + keyset `(createdAt, id)`. |
+| 1.3 | Seed via Prisma `createMany` batches; ~82/12/6 status skew; Alice/Bob/Carol/Dave on `ws_flamingo`. Generator `moduleFormat = "cjs"` so tsx/Next see model delegates. |
