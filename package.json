@@ -14,7 +14,10 @@
     "db:studio": "prisma studio",
     "db:up": "prisma dev --name flamingo-assignment --detach",
     "db:down": "prisma dev stop --name flamingo-assignment",
-    "db:seed": "tsx prisma/seed.ts"
+    "db:seed": "tsx prisma/seed.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:r1": "tsx scripts/r1-claim-race.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.9.1",
@@ -36,7 +39,9 @@
     "prisma": "^7.9.1",
     "tailwindcss": "^4",
     "tsx": "^4.23.1",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vite-tsconfig-paths": "^6.1.1",
+    "vitest": "^4.1.10"
   },
   "engines": {
     "node": ">=24"

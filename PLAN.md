@@ -25,7 +25,7 @@ Status legend: `[ ]` todo · `[~]` in progress · `[x]` done
 | 1.1 | Prisma + env example + DB connection wiring | `chore: add Prisma and Supabase Postgres wiring` | [x] |
 | 1.2 | Schema: Workspace, Membership, User, Item | `feat(schema): model workspaces, roles, and queue items` | [x] |
 | 1.3 | Seed users + ~10k items (realistic status spread) | `chore: seed users and ~10k triage items` | [x] |
-| 1.4 | Vitest + verification script stubs | `test: add Vitest and verification script stubs` | [ ] |
+| 1.4 | Vitest + verification script stubs | `test: add Vitest and verification script stubs` | [x] |
 
 ## Phase 2 — Auth + UI + API stubs
 
