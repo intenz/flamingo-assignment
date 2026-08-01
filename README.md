@@ -10,10 +10,13 @@ Next.js **16.2** App Router · Node **24** (`.nvmrc`) · TypeScript · Tailwind 
 
 ```bash
 nvm use   # reads .nvmrc → 24
+cp .env.example .env
+# set DATABASE_URL (Supabase Postgres) + SESSION_SECRET
 npm install
+npm run db:generate
 npm run dev
 ```
 
 ## Status
 
-Scaffold done. Prisma / seed / auth land in phase 1–2.
+Prisma 7 wired (`src/lib/prisma.ts`). Schema models land in step 1.2.
