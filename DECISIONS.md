@@ -1,0 +1,32 @@
+# Decisions
+
+Four scored decisions will be written here as they are forced by implementation. Template for each:
+
+**Context** that forced a choice / **Chose** / **Rejected** (strongest alternative + why) / **Costs** / **Wrong later** (100× traffic, ten engineers, next requirement).
+
+---
+
+## Decisions
+
+_(none yet — filled during R1–R5 and schema work)_
+
+---
+
+## Deliberately not done
+
+_(three items — filled near ship)_
+
+---
+
+## Day-one refactor
+
+_(one line — filled near ship)_
+
+---
+
+## Assumptions / gaps closed
+
+| When | Assumption |
+|------|------------|
+| 0.2 | Implementing all five requirements (R1–R5), not only required R1–R3. |
+| 0.2 | Target runtime Node 24; README will also note Next 16’s Node ≥20.9 floor for reviewers. |
