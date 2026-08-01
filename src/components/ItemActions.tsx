@@ -43,7 +43,7 @@ export function ItemActions({ item, currentUserId }: Props) {
   }
 
   if (!currentUserId) {
-    return <span className="text-xs text-zinc-400">—</span>;
+    return <span className="text-xs text-muted">—</span>;
   }
 
   return (
@@ -51,22 +51,25 @@ export function ItemActions({ item, currentUserId }: Props) {
       <div className="flex flex-wrap gap-1">
         <ActionButton
           label="Claim"
+          variant="primary"
           disabled={!canClaim || pending}
           onClick={() => run("claim")}
         />
         <ActionButton
           label="Resolve"
+          variant="secondary"
           disabled={!canResolve || pending}
           onClick={() => run("resolve")}
         />
         <ActionButton
           label="Release"
+          variant="ghost"
           disabled={!canRelease || pending}
           onClick={() => run("release")}
         />
       </div>
-      {notice ? <p className="text-xs text-amber-800">{notice}</p> : null}
-      {pending ? <p className="text-xs text-zinc-500">Working…</p> : null}
+      {notice ? <p className="text-xs text-warning">{notice}</p> : null}
+      {pending ? <p className="text-xs text-muted">Working…</p> : null}
     </div>
   );
 }
@@ -75,17 +78,26 @@ function ActionButton({
   label,
   disabled,
   onClick,
+  variant,
 }: {
   label: string;
   disabled: boolean;
   onClick: () => void;
+  variant: "primary" | "secondary" | "ghost";
 }) {
+  const styles =
+    variant === "primary"
+      ? "border-flamingo-pink bg-flamingo-pink text-white hover:bg-flamingo-pink-hover"
+      : variant === "secondary"
+        ? "border-flamingo-cyan bg-flamingo-cyan-soft text-flamingo-cyan hover:brightness-95"
+        : "border-border bg-card text-foreground hover:bg-surface";
+
   return (
     <button
       type="button"
       disabled={disabled}
       onClick={onClick}
-      className="rounded border border-zinc-300 bg-white px-2 py-0.5 text-xs font-medium text-zinc-800 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-40"
+      className={`rounded-full border px-2.5 py-0.5 text-xs font-medium disabled:cursor-not-allowed disabled:opacity-40 ${styles}`}
     >
       {label}
     </button>

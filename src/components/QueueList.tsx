@@ -14,46 +14,57 @@ function holderLabel(item: QueueItemRow): string {
   return "unknown";
 }
 
+function formatCreated(date: Date): string {
+  return new Intl.DateTimeFormat("en-GB", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(date);
+}
+
 export function QueueList({ items, cappedAt, currentUserId }: Props) {
   if (items.length === 0) {
     return (
-      <p className="rounded border border-dashed border-zinc-300 bg-zinc-50 px-4 py-8 text-center text-sm text-zinc-600">
+      <p className="rounded-2xl border border-dashed border-border bg-card px-4 py-8 text-center text-sm text-muted">
         No items in this workspace yet.
       </p>
     );
   }
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-zinc-200 bg-white">
-      <table className="w-full min-w-[44rem] border-collapse text-left text-sm">
-        <thead className="border-b border-zinc-200 bg-zinc-50 text-xs uppercase tracking-wide text-zinc-500">
+    <div className="overflow-x-auto rounded-2xl border border-border bg-card shadow-[0_1px_0_rgba(0,0,0,0.04)]">
+      <table className="w-full min-w-[48rem] border-collapse text-left text-sm">
+        <thead className="border-b border-border bg-surface text-xs uppercase tracking-wide text-muted">
           <tr>
-            <th className="px-3 py-2 font-medium">Status</th>
-            <th className="px-3 py-2 font-medium">Title</th>
-            <th className="px-3 py-2 font-medium">Holder</th>
-            <th className="px-3 py-2 font-medium">Actions</th>
-            <th className="px-3 py-2 font-medium">Id</th>
+            <th className="px-3 py-2.5 font-medium">Id</th>
+            <th className="px-3 py-2.5 font-medium">Title</th>
+            <th className="px-3 py-2.5 font-medium">Status</th>
+            <th className="px-3 py-2.5 font-medium">Holder</th>
+            <th className="px-3 py-2.5 font-medium">Created</th>
+            <th className="px-3 py-2.5 font-medium">Actions</th>
           </tr>
         </thead>
         <tbody>
           {items.map((item) => (
-            <tr key={item.id} className="border-b border-zinc-100 last:border-0">
-              <td className="px-3 py-2">
+            <tr key={item.id} className="border-b border-border/70 last:border-0">
+              <td className="px-3 py-2.5 font-mono text-xs text-muted">{item.id}</td>
+              <td className="px-3 py-2.5 font-medium text-foreground">{item.title}</td>
+              <td className="px-3 py-2.5">
                 <StatusPill status={item.status} />
               </td>
-              <td className="px-3 py-2 font-medium text-zinc-900">{item.title}</td>
-              <td className="px-3 py-2 text-zinc-600">{holderLabel(item)}</td>
-              <td className="px-3 py-2">
+              <td className="px-3 py-2.5 text-muted">{holderLabel(item)}</td>
+              <td className="px-3 py-2.5 whitespace-nowrap text-muted">
+                {formatCreated(item.createdAt)}
+              </td>
+              <td className="px-3 py-2.5">
                 <ItemActions item={item} currentUserId={currentUserId} />
               </td>
-              <td className="px-3 py-2 font-mono text-xs text-zinc-500">{item.id}</td>
             </tr>
           ))}
         </tbody>
       </table>
-      <p className="border-t border-zinc-100 px-3 py-2 text-xs text-zinc-500">
-        Showing {items.length} newest (cap {cappedAt}). Keyset / load-more in R4.
-        Claim is not yet race-safe (R1).
+      <p className="border-t border-border px-3 py-2 text-xs text-muted">
+        Showing {items.length} newest first (cap {cappedAt}). Keyset / load-more in
+        R4. Claim is not yet race-safe (R1).
       </p>
     </div>
   );
@@ -62,13 +73,13 @@ export function QueueList({ items, cappedAt, currentUserId }: Props) {
 function StatusPill({ status }: { status: QueueItemRow["status"] }) {
   const styles =
     status === "open"
-      ? "bg-emerald-50 text-emerald-800"
+      ? "bg-success-soft text-success"
       : status === "claimed"
-        ? "bg-amber-50 text-amber-900"
-        : "bg-zinc-100 text-zinc-600";
+        ? "bg-warning-soft text-warning"
+        : "bg-surface text-muted";
 
   return (
-    <span className={`inline-block rounded px-2 py-0.5 text-xs font-medium ${styles}`}>
+    <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium ${styles}`}>
       {status}
     </span>
   );

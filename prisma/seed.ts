@@ -54,6 +54,21 @@ async function main() {
   const resolvedCount = TOTAL_ITEMS - openCount - claimedCount;
   const claimants = ["usr_alice", "usr_bob", "usr_carol"] as const;
 
+  // Statuses must be mixed across time — if we assign open→claimed→resolved by
+  // index, "newest first" pages are all resolved (that was the UI bug).
+  const statusDeck: Array<"open" | "claimed" | "resolved"> = [
+    ...Array<"open">(openCount).fill("open"),
+    ...Array<"claimed">(claimedCount).fill("claimed"),
+    ...Array<"resolved">(resolvedCount).fill("resolved"),
+  ];
+  // Deterministic shuffle so re-seeds are stable.
+  for (let i = statusDeck.length - 1; i > 0; i--) {
+    const j = (Math.imul(i + 1, 2654435761) >>> 0) % (i + 1);
+    const tmp = statusDeck[i]!;
+    statusDeck[i] = statusDeck[j]!;
+    statusDeck[j] = tmp;
+  }
+
   const base = Date.now();
 
   for (let offset = 0; offset < TOTAL_ITEMS; offset += BATCH_SIZE) {
@@ -61,10 +76,7 @@ async function main() {
     const batch = [];
 
     for (let i = offset; i < end; i++) {
-      let status: "open" | "claimed" | "resolved";
-      if (i < openCount) status = "open";
-      else if (i < openCount + claimedCount) status = "claimed";
-      else status = "resolved";
+      const status = statusDeck[i]!;
 
       const claimedById =
         status === "open" ? null : claimants[i % claimants.length];
@@ -79,7 +91,7 @@ async function main() {
         status,
         claimedById,
         claimedAt,
-        // Spread createdAt so keyset pagination has a realistic order
+        // Higher i = newer (list sorts createdAt desc)
         createdAt: new Date(base - (TOTAL_ITEMS - i) * 1_000),
         updatedAt: new Date(base - (TOTAL_ITEMS - i) * 1_000),
       });

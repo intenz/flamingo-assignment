@@ -38,12 +38,12 @@ export function UserPicker({ users, currentUserId }: Props) {
 
   return (
     <div className="flex flex-col gap-2">
-      <label htmlFor="user-picker" className="text-sm font-medium text-zinc-700">
+      <label htmlFor="user-picker" className="text-sm font-medium text-foreground">
         Act as
       </label>
       <select
         id="user-picker"
-        className="rounded border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 disabled:opacity-60"
+        className="rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-flamingo-pink focus:ring-2 focus:ring-flamingo-pink-soft disabled:opacity-60"
         value={currentUserId ?? ""}
         disabled={pending}
         onChange={(e) => onChange(e.target.value)}
@@ -56,8 +56,8 @@ export function UserPicker({ users, currentUserId }: Props) {
           </option>
         ))}
       </select>
-      {error ? <p className="text-sm text-red-600">{error}</p> : null}
-      {pending ? <p className="text-xs text-zinc-500">Updating session…</p> : null}
+      {error ? <p className="text-sm text-danger">{error}</p> : null}
+      {pending ? <p className="text-xs text-muted">Updating session…</p> : null}
     </div>
   );
 }

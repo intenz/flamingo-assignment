@@ -35,6 +35,7 @@ Status legend: `[ ]` todo · `[~]` in progress · `[x]` done
 | 2.2 | Queue UI: list items for current workspace | `feat(ui): workspace queue list shell` | [x] |
 | 2.3 | Actions API stubs: claim / resolve / release | `feat(api): claim resolve release endpoints` | [x] |
 | 2.4 | Smoke tests: session cookie + list requires membership | `test: auth and list access smoke tests` | [x] |
+| 2.5 | Flamingo brand (logo + light ODS tokens from flamingo.run) | `style(ui): flamingo brand mark and light theme` | [x] |
 
 ## Phase 3 — R1 Claim once
 
