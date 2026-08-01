@@ -4,10 +4,16 @@ Concurrent triage queue for the Flamingo Full-Stack home assignment (R1–R5).
 
 Spec: [`docs/ASSIGNMENT.md`](docs/ASSIGNMENT.md) · Design: [`ARCHITECTURE.md`](ARCHITECTURE.md) · Plan: [`PLAN.md`](PLAN.md) · Decisions: [`DECISIONS.md`](DECISIONS.md) · AI: [`AI_USAGE.md`](AI_USAGE.md)
 
-## Stack (target)
+## Stack
 
-Next.js 16 App Router · Node 24 · TypeScript · Tailwind · Prisma → Supabase Postgres · fake cookie auth · Vercel
+Next.js **16.2** App Router · Node **24** (`.nvmrc`) · TypeScript · Tailwind 4 · Prisma → Supabase Postgres (next) · fake cookie auth · Vercel
+
+```bash
+nvm use   # reads .nvmrc → 24
+npm install
+npm run dev
+```
 
 ## Status
 
-Bootstrap in progress. Run / seed / verify instructions will land with the scaffold and later phases.
+Scaffold done. Prisma / seed / auth land in phase 1–2.

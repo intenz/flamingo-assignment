@@ -16,7 +16,7 @@ Status legend: `[ ]` todo · `[~]` in progress · `[x]` done
 |---|------|----------------------------|--------|
 | 0.1 | Create dir, git init, move workspace root | `chore: init flamingo-assignment repo` | [x] |
 | 0.2 | PLAN, ARCHITECTURE, DECISIONS/AI stubs, ASSIGNMENT | `docs: add plan architecture and assignment text` | [x] |
-| 0.3 | Node 24 pin + Next.js 16 App Router scaffold | `chore: scaffold Next.js 16 App Router on Node 24` | [ ] |
+| 0.3 | Node 24 pin + Next.js 16 App Router scaffold | `chore: scaffold Next.js 16 App Router on Node 24` | [x] |
 
 ## Phase 1 — Data layer
 
