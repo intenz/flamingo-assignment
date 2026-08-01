@@ -15,7 +15,7 @@ Four scored decisions will be written here as they are forced by implementation.
 **Rejected:** HTTP 409 / thrown `invalid_state` on every loss — fine for strict REST, wrong for a calm triage tool.  
 **Costs:** Clients must branch on `outcome`, not only status codes.  
 **Wrong later:** At higher traffic you’ll want clearer metrics so `already_claimed` isn’t counted as generic success.  
-**Commit:** `5d731c3`
+**Commit:** `7c56a4a`
 
 ---
 
