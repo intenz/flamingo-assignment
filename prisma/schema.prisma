@@ -1,7 +1,5 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
+// Triage queue domain — models only; outbox arrives in R3.
+// IDs are opaque strings (e.g. usr_alice, itm_…); assigned in seed / app code.
 
 generator client {
   provider = "prisma-client"
@@ -10,4 +8,69 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+}
+
+enum MembershipRole {
+  owner
+  member
+  viewer
+}
+
+enum ItemStatus {
+  open
+  claimed
+  resolved
+}
+
+model User {
+  id        String   @id
+  name      String
+  createdAt DateTime @default(now())
+
+  memberships Membership[]
+  claims      Item[]       @relation("ItemClaimant")
+}
+
+model Workspace {
+  id        String   @id
+  name      String
+  createdAt DateTime @default(now())
+
+  memberships Membership[]
+  items       Item[]
+}
+
+model Membership {
+  id          String         @id
+  workspaceId String
+  userId      String
+  role        MembershipRole
+  createdAt   DateTime       @default(now())
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, userId])
+  @@index([userId])
+}
+
+model Item {
+  id           String     @id
+  workspaceId  String
+  title        String
+  body         String     @default("")
+  status       ItemStatus @default(open)
+  claimedById  String?
+  claimedAt    DateTime?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  claimedBy User?     @relation("ItemClaimant", fields: [claimedById], references: [id], onDelete: SetNull)
+
+  // Queue list / keyset pagination (R4): newest-first stable order
+  @@index([workspaceId, createdAt, id])
+  // Claim / open-queue scans
+  @@index([workspaceId, status, createdAt, id])
+  @@index([claimedById])
 }
