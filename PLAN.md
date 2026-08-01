@@ -31,7 +31,7 @@ Status legend: `[ ]` todo · `[~]` in progress · `[x]` done
 
 | # | Step | Commit message (suggested) | Status |
 |---|------|----------------------------|--------|
-| 2.1 | Cookie auth: user dropdown + signed session cookie | `feat(auth): signed-cookie user picker (no OAuth)` | [ ] |
+| 2.1 | Cookie auth: user dropdown + signed session cookie | `feat(auth): signed-cookie user picker (no OAuth)` | [x] |
 | 2.2 | Queue UI: list items for current workspace | `feat(ui): workspace queue list shell` | [ ] |
 | 2.3 | Actions API stubs: claim / resolve / release | `feat(api): claim resolve release endpoints` | [ ] |
 | 2.4 | Smoke tests: session cookie + list requires membership | `test: auth and list access smoke tests` | [ ] |
