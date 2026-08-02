@@ -42,7 +42,7 @@ Four scored decisions will be written here as they are forced by implementation.
 **Rejected:** OFFSET/LIMIT (duplicates under churn) and fetching the whole workspace queue.  
 **Costs:** Brand-new head inserts are invisible until refresh; a deleted `after` anchor returns 404.  
 **Wrong later:** Heavy filters need matching composite indexes; very large tables want index-only seeks without sorting the older half.  
-**Commit:** `6fe7c16`
+**Commit:** `e974f16`
 
 ---
 
