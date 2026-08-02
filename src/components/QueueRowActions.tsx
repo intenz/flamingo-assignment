@@ -9,13 +9,15 @@ import { formatCreatedAt, holderLabel } from "@/lib/triage/item-row-view";
 type Props = {
   item: QueueItemRow;
   currentUserId: string | null;
+  canMutate: boolean;
 };
 
 /**
  * Client island for status / holder / created / actions.
  * Status+holder update locally after a lost claim; notice renders under buttons.
+ * Viewers get no action controls (R2) — mutations are still sealed server-side.
  */
-export function QueueRowActions({ item, currentUserId }: Props) {
+export function QueueRowActions({ item, currentUserId, canMutate }: Props) {
   const { row, pending, claimHint, canClaim, isHolder, run } = useItemActions(
     item,
     currentUserId,
@@ -31,7 +33,7 @@ export function QueueRowActions({ item, currentUserId }: Props) {
         {formatCreatedAt(item.createdAt)}
       </td>
       <td className="px-3 py-2.5">
-        {!currentUserId ? (
+        {!currentUserId || !canMutate ? (
           <span className="text-xs text-muted">—</span>
         ) : (
           <ItemActionButtons

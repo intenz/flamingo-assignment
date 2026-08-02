@@ -5,9 +5,16 @@ type Props = {
   items: QueueItemRow[];
   cappedAt: number;
   currentUserId: string | null;
+  /** False for viewers — action buttons are omitted (API still 403). */
+  canMutate: boolean;
 };
 
-export function QueueList({ items, cappedAt, currentUserId }: Props) {
+export function QueueList({
+  items,
+  cappedAt,
+  currentUserId,
+  canMutate,
+}: Props) {
   if (items.length === 0) {
     return (
       <p className="rounded-2xl border border-dashed border-border bg-card px-4 py-8 text-center text-sm text-muted">
@@ -38,7 +45,11 @@ export function QueueList({ items, cappedAt, currentUserId }: Props) {
               <td className="px-3 py-2.5 font-medium text-foreground">
                 {item.title}
               </td>
-              <QueueRowActions item={item} currentUserId={currentUserId} />
+              <QueueRowActions
+                item={item}
+                currentUserId={currentUserId}
+                canMutate={canMutate}
+              />
             </tr>
           ))}
         </tbody>
@@ -46,6 +57,9 @@ export function QueueList({ items, cappedAt, currentUserId }: Props) {
       <p className="border-t border-border px-3 py-2 text-xs text-muted">
         Showing {items.length} newest first (cap {cappedAt}). Keyset / load-more in
         R4.
+        {!canMutate && currentUserId
+          ? " Viewer role — queue is read-only."
+          : null}
       </p>
     </div>
   );

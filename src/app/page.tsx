@@ -1,6 +1,7 @@
 import { BrandMark } from "@/components/BrandMark";
 import { UserPicker } from "@/components/UserPicker";
 import { QueueList } from "@/components/QueueList";
+import { roleCanMutate } from "@/lib/auth/membership";
 import { getSessionUser, listSeededUsersForPicker } from "@/lib/auth/session";
 import {
   QUEUE_PAGE_SIZE,
@@ -14,6 +15,7 @@ export default async function Home() {
   ]);
 
   const canReadQueue = Boolean(session?.workspaceId && session?.id);
+  const canMutate = Boolean(session?.role && roleCanMutate(session.role));
   const items = canReadQueue
     ? await listItemsForWorkspace(
         session!.workspaceId!,
@@ -85,6 +87,7 @@ export default async function Home() {
               items={items}
               cappedAt={QUEUE_PAGE_SIZE}
               currentUserId={session?.id ?? null}
+              canMutate={canMutate}
             />
           )}
         </section>
