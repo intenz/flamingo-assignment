@@ -12,10 +12,10 @@ There is no always-on worker. Sweep is **opportunistic + optional HTTP**:
 |--------|------|
 | `listItemsForWorkspace` | Every queue page load (workspace-scoped) |
 | `claimItem` | Before the atomic claim — expires that row so a stale holder cannot block |
-| `GET /api/queue/snapshot` | Client polls while claimed rows are visible (sweep + return current state) |
+| `GET /api/queue/snapshot` | After Claim, UI waits `CLAIM_TTL_MS` then asks once (sweep + current row) |
 | `POST /api/claims/sweep` | Manual / external cron (session required; scoped to the user’s workspace) |
 
-Guarantee: **eventually** expired under traffic or while the queue UI is open with claimed rows (snapshot poll). Idle tabs without claimed rows need list traffic or cron.
+Guarantee: expiry is decided on the server. The client only schedules one re-read after a successful Claim so the row updates without a full page refresh.
 
 ## Resolve after expiry
 
