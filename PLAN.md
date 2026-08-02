@@ -83,7 +83,7 @@ Status legend: `[ ]` todo · `[~]` in progress · `[x]` done
 | 7.1 | Expire claims >30m back to open | `feat(r5): return stale claims to the queue` | [x] |
 | 7.2 | Sweep ownership (no Vercel daemon) | `feat(r5): serverless stale-claim sweep ownership` | [x] |
 | 7.3 | Resolve-after-expiry rejected + UI truth | `feat(r5): reject resolve after claim expiry` | [x] |
-| 7.4 | Tests: stale expiry and resolve-after-expiry | `test(r5): stale expiry and resolve-after-expiry` | [ ] |
+| 7.4 | Tests: stale expiry and resolve-after-expiry | `test(r5): stale expiry and resolve-after-expiry` | [x] |
 | 7.5 | Document sweep + expiry decision | `docs(r5): sweep runner and resolve-after-expiry` | [ ] |
 
 ## Phase 8 — Deliverable docs
