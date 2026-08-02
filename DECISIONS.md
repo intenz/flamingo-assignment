@@ -44,6 +44,15 @@ Four scored decisions will be written here as they are forced by implementation.
 **Wrong later:** Heavy filters need matching composite indexes; very large tables want index-only seeks without sorting the older half.  
 **Commit:** `e974f16`
 
+### 5. Stale claims sweep without a daemon; resolve-after-expiry fails open
+
+**Context:** Vercel has no long-lived daemon, but claims must return to the queue after 30m, and a late resolve must not succeed on an expired hold.  
+**Chose:** Opportunistic sweep on list + claim, plus `POST /api/claims/sweep`; resolve/release expire first and reject with `invalid_state` when the claim is gone — see `docs/r5-stale-claims.md`.  
+**Rejected:** Relying only on an external cron (silent drift if misconfigured) and accepting resolve after expiry (lies about who held it).  
+**Costs:** Exact 30m expiry needs traffic or a scheduled hit to `/api/claims/sweep`; idle workspaces can sit stale longer.  
+**Wrong later:** Multi-region / high claim volume wants a real queue worker and metrics on sweep lag.  
+**Commit:** _(docs commit)_
+
 ---
 
 ## Deliberately not done
@@ -80,3 +89,4 @@ _(one line — filled near ship)_
 | 5.2 | `NotifyOutbox` + resolve TX; `after()` first drain; no await notify on HTTP resolve. |
 | 5.3 | UI polls outbox status; failed → click Resolve again to re-drain (no auto client retries). List hydrates pending/failed notify after refresh. |
 | 6.2 | Queue pages via `after=<lastItemId>`; server looks up `(createdAt, id)` for keyset. `GET /api/queue` + Load more. Failure mode + EXPLAIN: `docs/r4-pagination.md`. |
+| 7.2 | Stale claims: list + claim sweep, `POST /api/claims/sweep`; resolve-after-expiry → `409` + open. `docs/r5-stale-claims.md`. |

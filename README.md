@@ -68,6 +68,14 @@ Keyset via `after=<lastItemId>` — no OFFSET. Approach, failure mode, and EXPLA
 npx vitest run tests/domain/r4-keyset.test.ts
 ```
 
+## Verify R5 (stale claims)
+
+Claims older than 30m return to `open`. Sweep runs on list/claim (+ optional `POST /api/claims/sweep`). Resolve after expiry → `409` + open row. Details: [`docs/r5-stale-claims.md`](docs/r5-stale-claims.md).
+
+```bash
+npx vitest run tests/domain/r5-stale.test.ts
+```
+
 ## Status
 
-R1–R4 done. Next: R5 stale claims / ship docs.
+R1–R5 implemented. Next: ship docs / deploy.
