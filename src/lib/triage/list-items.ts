@@ -2,6 +2,7 @@ import type { PrismaClient } from "@/generated/prisma/client";
 import { assertWorkspaceMember } from "@/lib/auth/membership";
 import { prisma as defaultPrisma } from "@/lib/prisma";
 import { TriageError } from "@/lib/triage/errors";
+import { expireStaleClaims } from "@/lib/triage/stale-claims";
 
 export const QUEUE_PAGE_SIZE = 50;
 
@@ -55,6 +56,9 @@ export async function listItemsForWorkspace(
   const afterId = options.after?.trim() || null;
 
   await assertWorkspaceMember(userId, workspaceId, db);
+
+  // R5: no Vercel daemon — list traffic sweeps this workspace's stale claims.
+  await expireStaleClaims({ workspaceId, db });
 
   let cursor: { createdAt: Date; id: string } | null = null;
   if (afterId) {

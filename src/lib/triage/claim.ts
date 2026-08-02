@@ -3,6 +3,7 @@ import { getMembership, roleCanMutate } from "@/lib/auth/membership";
 import { prisma as defaultPrisma } from "@/lib/prisma";
 import { withTransientDbRetry } from "@/lib/triage/db-retry";
 import { TriageError } from "@/lib/triage/errors";
+import { expireStaleClaimById } from "@/lib/triage/stale-claims";
 
 export type ClaimHolder = {
   id: string;
@@ -49,6 +50,9 @@ export async function claimItem(
   userId: string,
   db: PrismaClient = defaultPrisma,
 ): Promise<ClaimResult> {
+  // R5: expire this row first so a stale holder does not block a fresh claim.
+  await expireStaleClaimById(itemId, { db });
+
   const won = await db.$queryRaw<ClaimRow[]>`
     UPDATE "Item" AS i
     SET
