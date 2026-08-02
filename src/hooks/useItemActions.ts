@@ -3,8 +3,15 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import type { QueueItemRow } from "@/lib/triage/list-items";
-import type { ItemAction, ItemRowState } from "@/lib/triage/item-row-view";
-import { formatNotifyNotice } from "@/lib/triage/item-row-view";
+import type {
+  ActionNotice,
+  ItemAction,
+  ItemRowState,
+} from "@/lib/triage/item-row-view";
+import {
+  formatNotifyNotice,
+  noticeToneForNotifyStatus,
+} from "@/lib/triage/item-row-view";
 
 type ActionApiBody = {
   ok?: boolean;
@@ -24,8 +31,10 @@ type ActionApiBody = {
   };
 };
 
-type OutboxPollBody = {
+type OutboxBody = {
   ok?: boolean;
+  message?: string;
+  error?: string;
   notify?: {
     status: "pending" | "sent" | "failed";
     attempts: number;
@@ -41,27 +50,72 @@ function fromProps(item: QueueItemRow): ItemRowState {
   };
 }
 
-const POLL_MS = 600;
-const POLL_MAX = 20;
+const POLL_MS = 500;
+const POLL_MAX = 8; // cover ~1s after()-notify without auto-retrying drain
+const DELIVERED_HIDE_MS = 2500;
 
 /** Owns claim/resolve/release fetch + optimistic row reconcile after a lost claim. */
 export function useItemActions(item: QueueItemRow, currentUserId: string | null) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
-  const [actionNotice, setActionNotice] = useState<string | null>(null);
+  const [actionNotice, setActionNotice] = useState<ActionNotice | null>(null);
+  const [retryOutboxId, setRetryOutboxId] = useState<string | null>(null);
   const [row, setRow] = useState<ItemRowState>(() => fromProps(item));
   const pollGen = useRef(0);
+  const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function clearHideTimer() {
+    if (hideTimer.current) {
+      clearTimeout(hideTimer.current);
+      hideTimer.current = null;
+    }
+  }
+
+  /** Show notify status; auto-hide only when delivered. */
+  function showNotifyStatus(
+    notify: NonNullable<OutboxBody["notify"]>,
+    outboxId: string,
+    gen: number,
+  ): "continue" | "done" {
+    setActionNotice({
+      text: formatNotifyNotice(notify),
+      tone: noticeToneForNotifyStatus(
+        notify.status === "pending" && notify.attempts > 0
+          ? "failed"
+          : notify.status,
+      ),
+    });
+    if (notify.status === "sent") {
+      setRetryOutboxId(null);
+      clearHideTimer();
+      hideTimer.current = setTimeout(() => {
+        if (pollGen.current !== gen) return;
+        setActionNotice(null);
+      }, DELIVERED_HIDE_MS);
+      return "done";
+    }
+    // Failed, or pending after a failed send — stop polling; Resolve retries.
+    if (notify.status === "failed" || notify.attempts > 0) {
+      setRetryOutboxId(outboxId);
+      return "done";
+    }
+    setRetryOutboxId(null);
+    return "continue";
+  }
 
   useEffect(() => {
     setRow(fromProps(item));
     if (item.status === "open") {
+      clearHideTimer();
       setActionNotice(null);
+      setRetryOutboxId(null);
     }
   }, [item.status, item.claimedById, item.claimedByName]);
 
   useEffect(() => {
     return () => {
       pollGen.current += 1;
+      clearHideTimer();
     };
   }, []);
 
@@ -69,35 +123,91 @@ export function useItemActions(item: QueueItemRow, currentUserId: string | null)
   const isHolder =
     row.status === "claimed" && row.claimedById === currentUserId;
 
-  async function pollNotify(outboxId: string) {
+  async function peekStatus(
+    outboxId: string,
+  ): Promise<OutboxBody["notify"] | null> {
+    const res = await fetch(`/api/outbox/${outboxId}`);
+    const body = (await res.json().catch(() => ({}))) as OutboxBody;
+    if (!res.ok || !body.notify) return null;
+    return body.notify;
+  }
+
+  async function drainOnce(
+    outboxId: string,
+    gen: number,
+  ): Promise<OutboxBody["notify"] | null> {
+    const res = await fetch(`/api/outbox/${outboxId}`, { method: "POST" });
+    const body = (await res.json().catch(() => ({}))) as OutboxBody;
+    if (!res.ok || !body.notify) {
+      setActionNotice({
+        text: body.message ?? body.error ?? "Notify retry failed.",
+        tone: "failed",
+      });
+      setRetryOutboxId(outboxId);
+      return null;
+    }
+    showNotifyStatus(body.notify, outboxId, gen);
+    return body.notify;
+  }
+
+  /** Watch status only — first send is `after()` on the server; no auto-retries. */
+  async function followNotify(outboxId: string) {
     const gen = ++pollGen.current;
+    clearHideTimer();
+    setRetryOutboxId(null);
+
     for (let i = 0; i < POLL_MAX; i++) {
       if (pollGen.current !== gen) return;
       await new Promise((r) => setTimeout(r, POLL_MS));
       if (pollGen.current !== gen) return;
 
-      const res = await fetch(`/api/outbox/${outboxId}`);
-      const body = (await res.json().catch(() => ({}))) as OutboxPollBody;
-      if (!res.ok || !body.notify) {
-        setActionNotice(
-          body && "error" in body
-            ? String((body as { message?: string }).message ?? "Notify status unavailable.")
-            : "Notify status unavailable.",
-        );
-        return;
-      }
-
-      setActionNotice(formatNotifyNotice(body.notify));
-      if (body.notify.status === "sent" || body.notify.status === "failed") {
+      const notify = await peekStatus(outboxId);
+      if (!notify) continue;
+      if (showNotifyStatus(notify, outboxId, gen) === "done") {
         return;
       }
     }
-    setActionNotice("Notify: still pending — try POST /api/outbox/drain");
+
+    const last = await peekStatus(outboxId);
+    if (last) {
+      showNotifyStatus(last, outboxId, gen);
+      return;
+    }
+    setActionNotice({
+      text: "Notify failed. Click Resolve to retry.",
+      tone: "failed",
+    });
+    setRetryOutboxId(outboxId);
   }
 
   function run(action: ItemAction) {
     if (!currentUserId) return;
-    if (action === "claim") setActionNotice(null);
+    if (action === "claim") {
+      setActionNotice(null);
+      setRetryOutboxId(null);
+    }
+
+    // Already resolved: Resolve re-drains the pending/failed outbox (no new resolve).
+    if (action === "resolve" && retryOutboxId) {
+      const outboxId = retryOutboxId;
+      startTransition(async () => {
+        const gen = ++pollGen.current;
+        clearHideTimer();
+        setRetryOutboxId(null);
+        setActionNotice({ text: "Notify: sending…", tone: "pending" });
+        const notify = await drainOnce(outboxId, gen);
+        if (pollGen.current !== gen) return;
+        if (!notify) return;
+        if (notify.status === "pending" || notify.status === "failed") {
+          setActionNotice({
+            text: formatNotifyNotice(notify),
+            tone: noticeToneForNotifyStatus(notify.status),
+          });
+          setRetryOutboxId(outboxId);
+        }
+      });
+      return;
+    }
 
     startTransition(async () => {
       const res = await fetch(`/api/items/${item.id}/${action}`, {
@@ -107,9 +217,13 @@ export function useItemActions(item: QueueItemRow, currentUserId: string | null)
 
       if (!res.ok) {
         if (action === "claim" || action === "resolve") {
-          setActionNotice(
-            body.message ?? body.error ?? `${action} failed (${res.status}).`,
-          );
+          setActionNotice({
+            text:
+              body.message ??
+              body.error ??
+              `${action} failed (${res.status}).`,
+            tone: "failed",
+          });
         }
         router.refresh();
         return;
@@ -123,25 +237,45 @@ export function useItemActions(item: QueueItemRow, currentUserId: string | null)
         };
         const who = next.claimedByName ?? next.claimedById ?? "someone else";
         setRow(next);
-        setActionNotice(body.message ?? `Already claimed by ${who}.`);
-        router.refresh();
+        setActionNotice({
+          text: body.message ?? `Already claimed by ${who}.`,
+          tone: "warning",
+        });
+        return;
+      }
+
+      if (action === "claim" && body.outcome === "won") {
+        setRow({
+          status: "claimed",
+          claimedById: body.item?.claimedById ?? currentUserId,
+          claimedByName: body.item?.claimedByName ?? null,
+        });
+        setActionNotice(null);
         return;
       }
 
       if (action === "resolve" && body.notify?.outboxId) {
+        const status = body.notify.status ?? "pending";
         setRow({
           status: "resolved",
+          claimedById: body.item?.claimedById ?? currentUserId,
+          claimedByName: body.item?.claimedByName ?? null,
+        });
+        setActionNotice({
+          text: formatNotifyNotice({ status, attempts: 0 }),
+          tone: noticeToneForNotifyStatus(status),
+        });
+        void followNotify(body.notify.outboxId);
+        return;
+      }
+
+      if (action === "release" && body.ok !== false) {
+        setRow({
+          status: "open",
           claimedById: null,
           claimedByName: null,
         });
-        setActionNotice(
-          formatNotifyNotice({
-            status: body.notify.status ?? "pending",
-            attempts: 0,
-          }),
-        );
-        router.refresh();
-        void pollNotify(body.notify.outboxId);
+        setActionNotice(null);
         return;
       }
 
@@ -153,14 +287,14 @@ export function useItemActions(item: QueueItemRow, currentUserId: string | null)
         });
       }
       setActionNotice(null);
-      router.refresh();
     });
   }
 
   return {
     row,
     pending,
-    claimHint: actionNotice,
+    actionNotice,
+    canRetryNotify: Boolean(retryOutboxId),
     canClaim,
     isHolder,
     run,

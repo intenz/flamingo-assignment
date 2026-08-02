@@ -14,7 +14,7 @@ export type QueueItemRow = {
 };
 
 /**
- * First page of the workspace queue (newest first).
+ * First page of the workspace queue (newest first, all statuses).
  * R2: caller must be a member — list never spans workspaces.
  * Full keyset pagination arrives in R4 — for now we intentionally cap at N.
  */

@@ -40,11 +40,10 @@ describe("auth + list + claim smoke", () => {
     await prisma.$disconnect();
   });
 
-  it("lists at most QUEUE_PAGE_SIZE items for the workspace", async () => {
+  it("lists at most QUEUE_PAGE_SIZE items for the workspace newest first", async () => {
     const items = await listItemsForWorkspace(WORKSPACE_ID, USER_ID, QUEUE_PAGE_SIZE, prisma);
     expect(items.length).toBeGreaterThan(0);
     expect(items.length).toBeLessThanOrEqual(QUEUE_PAGE_SIZE);
-    // Newest-first: createdAt should be non-increasing
     for (let i = 1; i < items.length; i++) {
       expect(items[i - 1]!.createdAt.getTime()).toBeGreaterThanOrEqual(
         items[i]!.createdAt.getTime(),

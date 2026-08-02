@@ -30,7 +30,7 @@ export default async function Home() {
         aria-hidden
         className="pointer-events-none absolute inset-x-0 top-0 h-64 bg-[radial-gradient(ellipse_at_top,_var(--flamingo-pink-soft)_0%,_transparent_55%)] opacity-70"
       />
-      <main className="relative mx-auto flex w-[90%] max-w-[90%] flex-col gap-8 px-6 py-12">
+      <main className="relative mx-auto flex w-[80%] max-w-[80%] flex-col gap-8 px-6 py-12">
         <header className="flex items-start gap-4">
           <BrandMark size={44} />
           <div className="flex flex-col gap-1">

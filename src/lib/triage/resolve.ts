@@ -8,6 +8,9 @@ export type ResolveResult = {
   item: {
     id: string;
     status: "resolved";
+    /** Who resolved — kept on the row for Holder display. */
+    claimedById: string;
+    claimedByName: string | null;
   };
   /** Outbox row created in the same transaction — notify is drained after response. */
   notify: {
@@ -23,6 +26,7 @@ function newOutboxId(): string {
 
 /**
  * Resolve: marks claimed item resolved + durable notify outbox (same TX).
+ * Keeps `claimedById` as the resolver for Holder UI (not cleared).
  * Does not call flaky `notify()` — that is drain's job (R3 / serverless).
  */
 export async function resolveItem(
@@ -44,30 +48,41 @@ export async function resolveItem(
     );
   }
 
+  const resolver = await db.user.findUnique({
+    where: { id: userId },
+    select: { id: true, name: true },
+  });
+  const claimedByName = resolver?.name ?? null;
   const message = `Item ${itemId} resolved by ${userId}`;
   const outboxId = newOutboxId();
 
-  await db.$transaction(async (tx) => {
-    await tx.item.update({
+  // Keep claimedById = resolver; clear claimedAt (no longer an active claim).
+  await db.$transaction([
+    db.item.update({
       where: { id: itemId },
       data: {
         status: "resolved",
-        claimedById: null,
+        claimedById: userId,
         claimedAt: null,
       },
-    });
-    await tx.notifyOutbox.create({
+    }),
+    db.notifyOutbox.create({
       data: {
         id: outboxId,
         itemId,
         message,
         status: "pending",
       },
-    });
-  });
+    }),
+  ]);
 
   return {
-    item: { id: itemId, status: "resolved" },
+    item: {
+      id: itemId,
+      status: "resolved",
+      claimedById: userId,
+      claimedByName,
+    },
     notify: { outboxId, status: "pending", message },
   };
 }

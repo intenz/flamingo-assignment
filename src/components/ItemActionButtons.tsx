@@ -1,18 +1,30 @@
 "use client";
 
+import type { ActionNotice, NoticeTone } from "@/lib/triage/item-row-view";
+
 type Props = {
   canClaim: boolean;
   isHolder: boolean;
+  /** Resolved item with pending/failed notify — Resolve retries delivery. */
+  canRetryNotify: boolean;
   pending: boolean;
-  notice: string | null;
+  notice: ActionNotice | null;
   onClaim: () => void;
   onResolve: () => void;
   onRelease: () => void;
 };
 
+const TONE_CLASS: Record<NoticeTone, string> = {
+  pending: "bg-surface text-muted border border-border",
+  sent: "bg-success-soft text-success",
+  failed: "bg-danger-soft text-danger",
+  warning: "bg-warning-soft text-warning",
+};
+
 export function ItemActionButtons({
   canClaim,
   isHolder,
+  canRetryNotify,
   pending,
   notice,
   onClaim,
@@ -21,7 +33,7 @@ export function ItemActionButtons({
 }: Props) {
   return (
     <div className="flex flex-col gap-1">
-      <div className="flex flex-wrap gap-1">
+      <div className="flex flex-wrap gap-1" aria-busy={pending || undefined}>
         <ActionButton
           label="Claim"
           disabled={!canClaim || pending}
@@ -29,7 +41,7 @@ export function ItemActionButtons({
         />
         <ActionButton
           label="Resolve"
-          disabled={!isHolder || pending}
+          disabled={(!isHolder && !canRetryNotify) || pending}
           onClick={onResolve}
         />
         <ActionButton
@@ -37,18 +49,17 @@ export function ItemActionButtons({
           disabled={!isHolder || pending}
           onClick={onRelease}
         />
-        {pending ? (
-          <span className="self-center text-xs text-muted">…</span>
+      </div>
+      <div className="min-h-[1.75rem]">
+        {notice ? (
+          <p
+            role="status"
+            className={`max-w-[16rem] rounded-lg px-2 py-1 text-xs ${TONE_CLASS[notice.tone]}`}
+          >
+            {notice.text}
+          </p>
         ) : null}
       </div>
-      {notice ? (
-        <p
-          role="status"
-          className="max-w-[16rem] rounded-lg bg-warning-soft px-2 py-1 text-xs text-warning"
-        >
-          {notice}
-        </p>
-      ) : null}
     </div>
   );
 }

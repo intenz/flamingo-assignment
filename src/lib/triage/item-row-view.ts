@@ -17,9 +17,10 @@ export function formatCreatedAt(date: Date): string {
 
 export function holderLabel(row: ItemRowState): string {
   if (row.status === "open") return "—";
+  // Claimed → current holder; resolved → who resolved (we keep claimedById on resolve).
   if (row.claimedByName) return row.claimedByName;
   if (row.claimedById) return row.claimedById;
-  return "unknown";
+  return "—";
 }
 
 export function claimTooltip(
@@ -50,18 +51,33 @@ export function releaseTooltip(isHolder: boolean): string {
     : "Release unavailable: only the current holder can release.";
 }
 
+const NOTIFY_FAILED_RETRY =
+  "Notify failed. Click Resolve to retry.";
+
 export function formatNotifyNotice(view: {
   status: "pending" | "sent" | "failed";
   attempts: number;
   lastError?: string | null;
 }): string {
-  if (view.status === "pending") {
-    return view.attempts > 0
-      ? `Notify: pending (retry ${view.attempts})…`
-      : "Notify: pending…";
-  }
   if (view.status === "sent") {
     return "Notify: delivered.";
   }
-  return `Notify: failed${view.lastError ? ` — ${view.lastError}` : "."}`;
+  if (view.status === "pending" && view.attempts === 0) {
+    return "Notify: pending…";
+  }
+  // pending with attempts > 0, or terminal failed
+  return NOTIFY_FAILED_RETRY;
+}
+
+export type NoticeTone = "pending" | "sent" | "failed" | "warning";
+
+export type ActionNotice = {
+  text: string;
+  tone: NoticeTone;
+};
+
+export function noticeToneForNotifyStatus(
+  status: "pending" | "sent" | "failed",
+): NoticeTone {
+  return status;
 }

@@ -18,10 +18,15 @@ type Props = {
  * Viewers get no action controls (R2) — mutations are still sealed server-side.
  */
 export function QueueRowActions({ item, currentUserId, canMutate }: Props) {
-  const { row, pending, claimHint, canClaim, isHolder, run } = useItemActions(
-    item,
-    currentUserId,
-  );
+  const {
+    row,
+    pending,
+    actionNotice,
+    canRetryNotify,
+    canClaim,
+    isHolder,
+    run,
+  } = useItemActions(item, currentUserId);
 
   return (
     <>
@@ -39,8 +44,9 @@ export function QueueRowActions({ item, currentUserId, canMutate }: Props) {
           <ItemActionButtons
             canClaim={canClaim}
             isHolder={isHolder}
+            canRetryNotify={canRetryNotify}
             pending={pending}
-            notice={claimHint}
+            notice={actionNotice}
             onClaim={() => run("claim")}
             onResolve={() => run("resolve")}
             onRelease={() => run("release")}
