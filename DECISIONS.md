@@ -57,13 +57,15 @@ Four scored decisions will be written here as they are forced by implementation.
 
 ## Deliberately not done
 
-_(three items — filled near ship)_
+1. **Live claim-expiry UI** — no client timer/poll; stale rows flip on the next list/claim/resolve (or F5). Server remains the source of truth.
+2. **Dedicated stale-claim cron** — no Vercel Cron job; only opportunistic sweep + optional `POST /api/claims/sweep`.
+3. **Notify worker queue** — outbox drain is `after()` + Resolve-click retry, not a separate queue with backoff/metrics.
 
 ---
 
 ## Day-one refactor
 
-_(one line — filled near ship)_
+Wire a scheduled `POST /api/claims/sweep` (Vercel Cron) and a real outbox worker so expiry and notify delivery do not depend on page traffic or a second Resolve click.
 
 ---
 
