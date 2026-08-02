@@ -20,8 +20,7 @@ export default async function Home() {
     ? await listItemsForWorkspace(session!.workspaceId!, session!.id, {
         take: QUEUE_PAGE_SIZE,
       })
-    : { items: [], nextCursor: null };
-  const items = page.items;
+    : { items: [], nextAfterId: null };
 
   return (
     <div className="min-h-full bg-background text-foreground">
@@ -83,8 +82,9 @@ export default async function Home() {
             </p>
           ) : (
             <QueueList
-              items={items}
-              cappedAt={QUEUE_PAGE_SIZE}
+              initialItems={page.items}
+              initialNextAfterId={page.nextAfterId}
+              pageSize={QUEUE_PAGE_SIZE}
               currentUserId={session?.id ?? null}
               canMutate={canMutate}
             />

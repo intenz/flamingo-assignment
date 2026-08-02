@@ -1,6 +1,7 @@
 import type { PrismaClient } from "@/generated/prisma/client";
 import { assertWorkspaceMember } from "@/lib/auth/membership";
 import { prisma as defaultPrisma } from "@/lib/prisma";
+import { TriageError } from "@/lib/triage/errors";
 
 export const QUEUE_PAGE_SIZE = 50;
 
@@ -13,51 +14,25 @@ export type QueueItemRow = {
   createdAt: Date;
 };
 
-export type QueueCursor = {
-  createdAt: Date;
-  id: string;
-};
-
 export type QueuePage = {
   items: QueueItemRow[];
-  /** Opaque keyset cursor for the next older page; null if no more. */
-  nextCursor: string | null;
+  /**
+   * Id of the last row on this page — pass as `after` for the next older page.
+   * Null when there are no more older items.
+   */
+  nextAfterId: string | null;
 };
-
-/** Encode (createdAt, id) for newest-first keyset pagination. */
-export function encodeQueueCursor(createdAt: Date, id: string): string {
-  return Buffer.from(
-    `${createdAt.toISOString()}\n${id}`,
-    "utf8",
-  ).toString("base64url");
-}
-
-/** Decode cursor; returns null if malformed. */
-export function decodeQueueCursor(raw: string | null | undefined): QueueCursor | null {
-  if (!raw) return null;
-  try {
-    const text = Buffer.from(raw, "base64url").toString("utf8");
-    const nl = text.indexOf("\n");
-    if (nl <= 0) return null;
-    const iso = text.slice(0, nl);
-    const id = text.slice(nl + 1);
-    const createdAt = new Date(iso);
-    if (!id || Number.isNaN(createdAt.getTime())) return null;
-    return { createdAt, id };
-  } catch {
-    return null;
-  }
-}
 
 export type ListItemsOptions = {
   take?: number;
-  /** Opaque cursor from a previous page's `nextCursor`. */
-  cursor?: string | null;
+  /** Continue with items older than this id (newest-first keyset). */
+  after?: string | null;
   db?: PrismaClient;
 };
 
 /**
  * Workspace queue page — newest first, keyset on (createdAt, id).
+ * Client passes the last seen item id as `after`; server resolves createdAt.
  * Stable under inserts/deletes ahead of the cursor (unlike OFFSET).
  */
 export async function listItemsForWorkspace(
@@ -67,9 +42,24 @@ export async function listItemsForWorkspace(
 ): Promise<QueuePage> {
   const take = options.take ?? QUEUE_PAGE_SIZE;
   const db = options.db ?? defaultPrisma;
-  const cursor = decodeQueueCursor(options.cursor ?? null);
+  const afterId = options.after?.trim() || null;
 
   await assertWorkspaceMember(userId, workspaceId, db);
+
+  let cursor: { createdAt: Date; id: string } | null = null;
+  if (afterId) {
+    const anchor = await db.item.findFirst({
+      where: { id: afterId, workspaceId },
+      select: { id: true, createdAt: true },
+    });
+    if (!anchor) {
+      throw new TriageError(
+        "not_found",
+        "after item not found in this workspace.",
+      );
+    }
+    cursor = { createdAt: anchor.createdAt, id: anchor.id };
+  }
 
   const items = await db.item.findMany({
     where: {
@@ -106,8 +96,6 @@ export async function listItemsForWorkspace(
       claimedByName: item.claimedBy?.name ?? null,
       createdAt: item.createdAt,
     })),
-    nextCursor: hasMore && last
-      ? encodeQueueCursor(last.createdAt, last.id)
-      : null,
+    nextAfterId: hasMore && last ? last.id : null,
   };
 }

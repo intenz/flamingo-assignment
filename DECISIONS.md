@@ -70,3 +70,4 @@ _(one line — filled near ship)_
 | 4.3 | Viewer: no action buttons in UI; API still 403 via `roleCanMutate` / claim JOIN. |
 | 5.2 | `NotifyOutbox` + resolve TX; `after()` first drain; no await notify on HTTP resolve. |
 | 5.3 | UI polls outbox status; failed → click Resolve again to re-drain (no auto client retries). |
+| 6.2 | Queue pages via `after=<lastItemId>`; server looks up `(createdAt, id)` for keyset. `GET /api/queue` + Load more. |

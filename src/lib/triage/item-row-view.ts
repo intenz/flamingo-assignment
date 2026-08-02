@@ -8,11 +8,12 @@ export type ItemRowState = {
 
 export type ItemAction = "claim" | "resolve" | "release";
 
-export function formatCreatedAt(date: Date): string {
+export function formatCreatedAt(date: Date | string): string {
+  const value = typeof date === "string" ? new Date(date) : date;
   return new Intl.DateTimeFormat("en-GB", {
     dateStyle: "medium",
     timeStyle: "short",
-  }).format(date);
+  }).format(value);
 }
 
 export function holderLabel(row: ItemRowState): string {
