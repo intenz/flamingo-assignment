@@ -44,7 +44,7 @@
     "vitest": "^4.1.10"
   },
   "engines": {
-    "node": ">=24"
+    "node": "24.x"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

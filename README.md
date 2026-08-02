@@ -97,6 +97,10 @@ npx vitest run tests/domain/r5-stale.test.ts
 
 UI updates after refresh or the next claim/resolve/release (no client-side expiry clock).
 
+## Deploy
+
+See [`docs/deploy.md`](docs/deploy.md) (Vercel + hosted Postgres / Supabase).
+
 ## Status
 
-R1–R5 and deliverable docs done. Next: Vercel deploy + live URL.
+R1–R5 and deliverable docs done. Deploy wiring ready — needs GitHub auth + production `DATABASE_URL` + `vercel login`.
