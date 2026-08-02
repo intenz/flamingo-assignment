@@ -89,7 +89,7 @@ describe("R3 outbox resolve and drain", () => {
     expect(row.lastError).toBeNull();
   });
 
-  it("failed drain stays pending; second drain can send (at-least-once)", async () => {
+  it("failed drain stays pending; second drain can send (best-effort-with-a-record)", async () => {
     const { notify } = await resolveItem(ITEM_ID, USER_ID, prisma);
 
     const first = await deliverNotifyOutbox(

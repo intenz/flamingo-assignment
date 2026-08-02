@@ -31,7 +31,7 @@ Typical messages: `"Not a member of this workspace."` / `"Viewers can read the q
 
 ## Guarantee
 
-**Decision 2** (`DECISIONS.md`): ACL in domain; UI only hides buttons for viewers.
+ACL lives in domain (not the UI). See also [`DECISIONS.md`](../DECISIONS.md).
 
 ## Verify
 

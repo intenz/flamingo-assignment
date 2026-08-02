@@ -84,7 +84,7 @@ User ──────── < Membership > ──────── Workspace
 |-----|--------|-------------|
 | R1 | Exactly one claim winner | Conditional DB update; conflict returns holder |
 | R2 | No cross-workspace; viewer read-only | Central server ACL + workspace-scoped queries |
-| R3 | Resolve ≠ wait on flaky notify | Durable outbox; honest delivery guarantee |
+| R3 | Resolve ≠ wait on flaky notify | Durable outbox; **best-effort-with-a-record** |
 | R4 | Stable pages under churn | Keyset on `(createdAt, id)` via `after=<id>`; failure mode + EXPLAIN in `docs/r4-pagination.md` |
 | R5 | Claims expire after 30m | List/claim + `POST /api/queue/queue-reopen-claim`; resolve-after-expiry → open + 409 — `docs/r5-stale-claims.md` |
 

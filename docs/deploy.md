@@ -33,3 +33,5 @@ npx vercel --prod
 ```
 
 Confirm Node.js **≥20.9** in project settings (see `package.json` `engines`; matches Next 16 + assignment “Node 20”).
+
+For reviewers: turn **off Deployment Protection** (Vercel → Project → Settings → Deployment Protection) so https://flamingo-assignment.vercel.app opens without a Vercel login.

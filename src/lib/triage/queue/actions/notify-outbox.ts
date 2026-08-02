@@ -49,7 +49,7 @@ export async function getNotifyOutboxStatus(
 
 /**
  * One attempt to deliver a notify outbox row via flaky `notify()`.
- * At-least-once until `delivered`, or `failed` after NOTIFY_MAX_ATTEMPTS.
+ * Best-effort-with-a-record: retry until `delivered`, or `failed` after NOTIFY_MAX_ATTEMPTS.
  */
 export async function deliverNotifyOutbox(
   outboxId: string,

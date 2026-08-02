@@ -34,7 +34,7 @@ Post-response, `after()` schedules `deliverNotifyOutbox(outboxId)`. The UI **pol
 
 ## Guarantee
 
-**at-least-once** delivery attempts (`DECISIONS.md` §3) — not exactly-once. Downstream must tolerate duplicate notifies.
+**best-effort-with-a-record** — outbox row always exists; drain retries up to `NOTIFY_MAX_ATTEMPTS` (8), then stays `failed` and visible. Not unbounded at-least-once (no worker). Not exactly-once.
 
 ## Verify
 
