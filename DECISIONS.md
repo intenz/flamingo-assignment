@@ -35,6 +35,15 @@ Four scored decisions will be written here as they are forced by implementation.
 **Wrong later:** High traffic needs a real worker queue with backoff, not Resolve-click retries.  
 **Commit:** `3cceeb6`
 
+### 4. Queue pages with keyset `after=<id>`, not OFFSET
+
+**Context:** The queue moves while someone loads more; OFFSET shifts under head inserts and deep pages get expensive on ~10k+ rows.  
+**Chose:** Keyset on `(createdAt, id)` with `after=<lastItemId>` (server resolves the sort key) plus Load more — see `docs/r4-pagination.md` for EXPLAIN ANALYZE.  
+**Rejected:** OFFSET/LIMIT (duplicates under churn) and fetching the whole workspace queue.  
+**Costs:** Brand-new head inserts are invisible until refresh; a deleted `after` anchor returns 404.  
+**Wrong later:** Heavy filters need matching composite indexes; very large tables want index-only seeks without sorting the older half.  
+**Commit:** `6fe7c16`
+
 ---
 
 ## Deliberately not done
@@ -70,4 +79,4 @@ _(one line — filled near ship)_
 | 4.3 | Viewer: no action buttons in UI; API still 403 via `roleCanMutate` / claim JOIN. |
 | 5.2 | `NotifyOutbox` + resolve TX; `after()` first drain; no await notify on HTTP resolve. |
 | 5.3 | UI polls outbox status; failed → click Resolve again to re-drain (no auto client retries). List hydrates pending/failed notify after refresh. |
-| 6.2 | Queue pages via `after=<lastItemId>`; server looks up `(createdAt, id)` for keyset. `GET /api/queue` + Load more. |
+| 6.2 | Queue pages via `after=<lastItemId>`; server looks up `(createdAt, id)` for keyset. `GET /api/queue` + Load more. Failure mode + EXPLAIN: `docs/r4-pagination.md`. |

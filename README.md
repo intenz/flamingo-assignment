@@ -60,6 +60,14 @@ npm run dev   # pick usr_dave
 npx vitest run tests/domain/r2-seal.test.ts
 ```
 
+## Verify R4 (stable pagination)
+
+Keyset via `after=<lastItemId>` — no OFFSET. Approach, failure mode, and EXPLAIN ANALYZE: [`docs/r4-pagination.md`](docs/r4-pagination.md).
+
+```bash
+npx vitest run tests/domain/r4-keyset.test.ts
+```
+
 ## Status
 
-R1–R3 done (claim once, sealed workspaces, resolve + durable notify outbox). Next: R4 pagination / R5 stale claims / ship docs.
+R1–R4 done. Next: R5 stale claims / ship docs.
