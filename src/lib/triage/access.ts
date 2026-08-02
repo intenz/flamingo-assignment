@@ -8,7 +8,7 @@ import { prisma as defaultPrisma } from "@/lib/prisma";
 import { TriageError } from "@/lib/triage/errors";
 
 export type ItemAccess = {
-  item: Pick<Item, "id" | "workspaceId" | "status" | "claimedById">;
+  item: Pick<Item, "id" | "workspaceId" | "status" | "claimedById" | "claimedAt">;
   membership: MembershipInfo;
 };
 
@@ -30,6 +30,7 @@ export async function assertItemAccess(
       workspaceId: true,
       status: true,
       claimedById: true,
+      claimedAt: true,
     },
   });
 

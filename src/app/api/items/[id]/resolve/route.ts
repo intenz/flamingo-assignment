@@ -1,5 +1,6 @@
 import { after, NextResponse } from "next/server";
 import { getSessionUserId } from "@/lib/auth/session";
+import { CLAIM_EXPIRED_MESSAGE } from "@/lib/triage/claim-constants";
 import { drainOutboxEntry } from "@/lib/triage/outbox";
 import { resolveItem } from "@/lib/triage/resolve";
 import {
@@ -38,10 +39,31 @@ export async function POST(_request: Request, { params }: Params) {
     });
   } catch (err) {
     if (err instanceof TriageError) {
-      return NextResponse.json(
-        { error: err.code, message: err.message },
-        { status: httpStatusForTriageError(err.code) },
-      );
+      const payload: {
+        error: string;
+        message: string;
+        item?: {
+          status: string;
+          claimedById: string | null;
+          claimedByName: string | null;
+        };
+      } = {
+        error: err.code,
+        message: err.message,
+      };
+
+      // R5: tell the UI the row is open again after expiry.
+      if (err.message === CLAIM_EXPIRED_MESSAGE) {
+        payload.item = {
+          status: "open",
+          claimedById: null,
+          claimedByName: null,
+        };
+      }
+
+      return NextResponse.json(payload, {
+        status: httpStatusForTriageError(err.code),
+      });
     }
     throw err;
   }

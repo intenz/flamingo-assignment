@@ -12,6 +12,7 @@ import {
   formatNotifyNotice,
   noticeToneForNotifyStatus,
 } from "@/lib/triage/item-row-view";
+import { CLAIM_EXPIRED_MESSAGE } from "@/lib/triage/claim-constants";
 
 type ActionApiBody = {
   ok?: boolean;
@@ -244,8 +245,21 @@ export function useItemActions(item: QueueItemRow, currentUserId: string | null)
               body.message ??
               body.error ??
               `${action} failed (${res.status}).`,
-            tone: "failed",
+            tone: body.message === CLAIM_EXPIRED_MESSAGE ? "warning" : "failed",
           });
+        }
+        // R5: resolve-after-expiry — row is open again; show that without waiting on refresh.
+        if (
+          action === "resolve" &&
+          (body.message === CLAIM_EXPIRED_MESSAGE ||
+            body.item?.status === "open")
+        ) {
+          setRow({
+            status: "open",
+            claimedById: null,
+            claimedByName: null,
+          });
+          setRetryOutboxId(null);
         }
         router.refresh();
         return;

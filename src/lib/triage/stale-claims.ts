@@ -1,8 +1,11 @@
 import type { PrismaClient } from "@/generated/prisma/client";
 import { prisma as defaultPrisma } from "@/lib/prisma";
+import {
+  CLAIM_EXPIRED_MESSAGE,
+  CLAIM_TTL_MS,
+} from "@/lib/triage/claim-constants";
 
-/** Active claims older than this return to `open` (R5). */
-export const CLAIM_TTL_MS = 30 * 60 * 1000;
+export { CLAIM_EXPIRED_MESSAGE, CLAIM_TTL_MS } from "@/lib/triage/claim-constants";
 
 export type ExpireStaleClaimsOptions = {
   /** Limit sweep to one workspace (list / session sweep). */
