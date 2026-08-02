@@ -1,5 +1,7 @@
 import type { PrismaClient } from "@/generated/prisma/client";
+import { assertWorkspaceMember } from "@/lib/auth/membership";
 import { prisma as defaultPrisma } from "@/lib/prisma";
+import { TriageError } from "@/lib/triage/errors";
 import { notify, type NotifyDeps } from "@/lib/triage/notify";
 
 /** Stop retrying after this many failed notify attempts (row stays `failed`). */
@@ -11,6 +13,40 @@ export type DrainResult = {
   attempts: number;
   error?: string;
 };
+
+export type OutboxStatusView = {
+  outboxId: string;
+  itemId: string;
+  status: "pending" | "sent" | "failed";
+  attempts: number;
+  lastError: string | null;
+  sentAt: string | null;
+};
+
+/** Workspace members can poll delivery status for an outbox row. */
+export async function getOutboxStatus(
+  outboxId: string,
+  userId: string,
+  db: PrismaClient = defaultPrisma,
+): Promise<OutboxStatusView> {
+  const row = await db.notifyOutbox.findUnique({
+    where: { id: outboxId },
+    include: { item: { select: { workspaceId: true } } },
+  });
+  if (!row) {
+    throw new TriageError("not_found", "Notify outbox entry not found.");
+  }
+  await assertWorkspaceMember(userId, row.item.workspaceId, db);
+
+  return {
+    outboxId: row.id,
+    itemId: row.itemId,
+    status: row.status,
+    attempts: row.attempts,
+    lastError: row.lastError,
+    sentAt: row.sentAt?.toISOString() ?? null,
+  };
+}
 
 /**
  * Attempt to deliver one outbox row via flaky `notify()`.

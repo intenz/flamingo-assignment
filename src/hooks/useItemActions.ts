@@ -1,11 +1,12 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import type { QueueItemRow } from "@/lib/triage/list-items";
 import type { ItemAction, ItemRowState } from "@/lib/triage/item-row-view";
+import { formatNotifyNotice } from "@/lib/triage/item-row-view";
 
-type ClaimApiBody = {
+type ActionApiBody = {
   ok?: boolean;
   outcome?: string;
   message?: string;
@@ -16,6 +17,20 @@ type ClaimApiBody = {
     claimedByName?: string | null;
   };
   holder?: { id: string; name: string | null } | null;
+  notify?: {
+    outboxId: string;
+    status: "pending" | "sent" | "failed";
+    message?: string;
+  };
+};
+
+type OutboxPollBody = {
+  ok?: boolean;
+  notify?: {
+    status: "pending" | "sent" | "failed";
+    attempts: number;
+    lastError: string | null;
+  };
 };
 
 function fromProps(item: QueueItemRow): ItemRowState {
@@ -26,40 +41,74 @@ function fromProps(item: QueueItemRow): ItemRowState {
   };
 }
 
+const POLL_MS = 600;
+const POLL_MAX = 20;
+
 /** Owns claim/resolve/release fetch + optimistic row reconcile after a lost claim. */
 export function useItemActions(item: QueueItemRow, currentUserId: string | null) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
-  const [claimHint, setClaimHint] = useState<string | null>(null);
+  const [actionNotice, setActionNotice] = useState<string | null>(null);
   const [row, setRow] = useState<ItemRowState>(() => fromProps(item));
+  const pollGen = useRef(0);
 
   useEffect(() => {
     setRow(fromProps(item));
-    // Keep claimHint after refresh so the tooltip still explains a lost race;
-    // clear only when the item is open again (or on the next claim attempt).
     if (item.status === "open") {
-      setClaimHint(null);
+      setActionNotice(null);
     }
   }, [item.status, item.claimedById, item.claimedByName]);
+
+  useEffect(() => {
+    return () => {
+      pollGen.current += 1;
+    };
+  }, []);
 
   const canClaim = row.status === "open" && Boolean(currentUserId);
   const isHolder =
     row.status === "claimed" && row.claimedById === currentUserId;
 
+  async function pollNotify(outboxId: string) {
+    const gen = ++pollGen.current;
+    for (let i = 0; i < POLL_MAX; i++) {
+      if (pollGen.current !== gen) return;
+      await new Promise((r) => setTimeout(r, POLL_MS));
+      if (pollGen.current !== gen) return;
+
+      const res = await fetch(`/api/outbox/${outboxId}`);
+      const body = (await res.json().catch(() => ({}))) as OutboxPollBody;
+      if (!res.ok || !body.notify) {
+        setActionNotice(
+          body && "error" in body
+            ? String((body as { message?: string }).message ?? "Notify status unavailable.")
+            : "Notify status unavailable.",
+        );
+        return;
+      }
+
+      setActionNotice(formatNotifyNotice(body.notify));
+      if (body.notify.status === "sent" || body.notify.status === "failed") {
+        return;
+      }
+    }
+    setActionNotice("Notify: still pending — try POST /api/outbox/drain");
+  }
+
   function run(action: ItemAction) {
     if (!currentUserId) return;
-    if (action === "claim") setClaimHint(null);
+    if (action === "claim") setActionNotice(null);
 
     startTransition(async () => {
       const res = await fetch(`/api/items/${item.id}/${action}`, {
         method: "POST",
       });
-      const body = (await res.json().catch(() => ({}))) as ClaimApiBody;
+      const body = (await res.json().catch(() => ({}))) as ActionApiBody;
 
       if (!res.ok) {
-        if (action === "claim") {
-          setClaimHint(
-            body.message ?? body.error ?? `Claim failed (${res.status}).`,
+        if (action === "claim" || action === "resolve") {
+          setActionNotice(
+            body.message ?? body.error ?? `${action} failed (${res.status}).`,
           );
         }
         router.refresh();
@@ -74,8 +123,25 @@ export function useItemActions(item: QueueItemRow, currentUserId: string | null)
         };
         const who = next.claimedByName ?? next.claimedById ?? "someone else";
         setRow(next);
-        setClaimHint(body.message ?? `Already claimed by ${who}.`);
+        setActionNotice(body.message ?? `Already claimed by ${who}.`);
         router.refresh();
+        return;
+      }
+
+      if (action === "resolve" && body.notify?.outboxId) {
+        setRow({
+          status: "resolved",
+          claimedById: null,
+          claimedByName: null,
+        });
+        setActionNotice(
+          formatNotifyNotice({
+            status: body.notify.status ?? "pending",
+            attempts: 0,
+          }),
+        );
+        router.refresh();
+        void pollNotify(body.notify.outboxId);
         return;
       }
 
@@ -86,7 +152,7 @@ export function useItemActions(item: QueueItemRow, currentUserId: string | null)
           claimedByName: body.item.claimedByName ?? null,
         });
       }
-      setClaimHint(null);
+      setActionNotice(null);
       router.refresh();
     });
   }
@@ -94,7 +160,7 @@ export function useItemActions(item: QueueItemRow, currentUserId: string | null)
   return {
     row,
     pending,
-    claimHint,
+    claimHint: actionNotice,
     canClaim,
     isHolder,
     run,

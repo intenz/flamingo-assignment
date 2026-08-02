@@ -49,3 +49,19 @@ export function releaseTooltip(isHolder: boolean): string {
     ? "Release: return this item to the open queue."
     : "Release unavailable: only the current holder can release.";
 }
+
+export function formatNotifyNotice(view: {
+  status: "pending" | "sent" | "failed";
+  attempts: number;
+  lastError?: string | null;
+}): string {
+  if (view.status === "pending") {
+    return view.attempts > 0
+      ? `Notify: pending (retry ${view.attempts})…`
+      : "Notify: pending…";
+  }
+  if (view.status === "sent") {
+    return "Notify: delivered.";
+  }
+  return `Notify: failed${view.lastError ? ` — ${view.lastError}` : "."}`;
+}
