@@ -62,7 +62,7 @@ Status legend: `[ ]` todo · `[~]` in progress · `[x]` done
 | # | Step | Commit message (suggested) | Status |
 |---|------|----------------------------|--------|
 | 5.1 | Flaky `notify()` (~1s sleep, ~1/5 throws) | `feat(r3): flaky notify helper` | [x] |
-| 5.2 | Resolve does not await notify; durable outbox | `feat(r3): async notify with durable delivery record` | [ ] |
+| 5.2 | Resolve does not await notify; durable outbox | `feat(r3): async notify with durable delivery record` | [x] |
 | 5.3 | UI: resolve immediate; notify status visible | `feat(r3): truthful resolve + notify status in UI` | [ ] |
 | 5.4 | Tests: outbox resolve and drain behavior | `test(r3): outbox resolve and drain behavior` | [ ] |
 | 5.5 | Name guarantee honestly in DECISIONS | `docs(r3): state notify delivery guarantee` | [ ] |

@@ -1,4 +1,4 @@
-// Triage queue domain — models only; outbox arrives in R3.
+// Triage queue domain — NotifyOutbox for R3 durable notify delivery.
 // IDs are opaque strings (e.g. usr_alice, itm_…); assigned in seed / app code.
 
 generator client {
@@ -21,6 +21,12 @@ enum ItemStatus {
   open
   claimed
   resolved
+}
+
+enum NotifyOutboxStatus {
+  pending
+  sent
+  failed
 }
 
 model User {
@@ -66,12 +72,32 @@ model Item {
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
 
-  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  claimedBy User?     @relation("ItemClaimant", fields: [claimedById], references: [id], onDelete: SetNull)
+  workspace    Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  claimedBy    User?          @relation("ItemClaimant", fields: [claimedById], references: [id], onDelete: SetNull)
+  notifyOutbox NotifyOutbox[]
 
   // Queue list / keyset pagination (R4): newest-first stable order
   @@index([workspaceId, createdAt, id])
   // Claim / open-queue scans
   @@index([workspaceId, status, createdAt, id])
   @@index([claimedById])
+}
+
+/// Durable notify intent — resolve writes a row; drain calls flaky notify().
+/// At-least-once: retries while pending until sent (or max attempts → failed).
+model NotifyOutbox {
+  id        String             @id
+  itemId    String
+  message   String
+  status    NotifyOutboxStatus @default(pending)
+  attempts  Int                @default(0)
+  lastError String?
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+  sentAt    DateTime?
+
+  item Item @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+  @@index([itemId])
 }

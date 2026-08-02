@@ -1,5 +1,6 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { getSessionUserId } from "@/lib/auth/session";
+import { drainOutboxEntry } from "@/lib/triage/outbox";
 import { resolveItem } from "@/lib/triage/resolve";
 import {
   TriageError,
@@ -20,10 +21,20 @@ export async function POST(_request: Request, { params }: Params) {
   const { id } = await params;
 
   try {
-    const item = await resolveItem(id, userId);
+    const result = await resolveItem(id, userId);
+
+    // Do not await notify — schedule drain after the response (serverless-safe via after/waitUntil).
+    const outboxId = result.notify.outboxId;
+    after(() => {
+      void drainOutboxEntry(outboxId).catch((err) => {
+        console.error("outbox drain after resolve failed", outboxId, err);
+      });
+    });
+
     return NextResponse.json({
       ok: true,
-      item: { id: item.id, status: item.status },
+      item: result.item,
+      notify: result.notify,
     });
   } catch (err) {
     if (err instanceof TriageError) {
