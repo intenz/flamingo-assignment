@@ -32,4 +32,4 @@ npx vercel env add SESSION_SECRET production
 npx vercel --prod
 ```
 
-Confirm Node.js **24.x** in project settings (`package.json` engines).
+Confirm Node.js **≥20.9** in project settings (see `package.json` `engines`; matches Next 16 + assignment “Node 20”).

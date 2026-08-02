@@ -20,7 +20,7 @@ Next.js App Router + TypeScript + Tailwind, Prisma against Supabase Postgres, de
 
 Don't build real OAuth — a dropdown that picks one of a few seeded users and sets a signed cookie is exactly what we want. And seed roughly 10,000 items early, with a realistic status spread rather than an even one; one `generate_series` statement in the Supabase SQL editor does it in seconds. Everything below reads differently against ten rows than ten thousand.
 
-**This repo targets Next.js 16 and Node 24.** Reviewers on Node 20.9+ (Next 16 minimum) should still be able to run it.
+**This repo targets Next.js 16.** Runtime: Node **≥20.9** (assignment “Node 20”; Next 16 minimum). Local `.nvmrc` may pin a newer LTS.
 
 ## The app
 

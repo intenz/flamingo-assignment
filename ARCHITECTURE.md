@@ -12,7 +12,7 @@ A shared **triage queue** per workspace. Members **claim** an item (exactly one 
 
 | Layer | Choice |
 |-------|--------|
-| Runtime | Node 24 (`.nvmrc`); Next.js 16 requires ≥20.9 |
+| Runtime | Node ≥20.9 (Next.js 16 floor; assignment asks Node 20; `.nvmrc` can be newer) |
 | App | Next.js 16 App Router, TypeScript, Tailwind |
 | ORM / DB | Prisma → Supabase Postgres |
 | Auth | Seeded-user dropdown + HMAC-signed session cookie (no OAuth) |

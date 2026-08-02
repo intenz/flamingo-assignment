@@ -4,7 +4,7 @@ Required write-up for the Flamingo assignment.
 
 ## Where AI was used
 
-- **Scaffold** — Next.js 16, Node 24, Prisma 7, seed (~10k), Vitest.
+- **Scaffold** — Next.js 16, Node ≥20.9 (local 24 ok), Prisma 7, seed (~10k), Vitest.
 - **Shell** — signed cookie picker, queue UI, claim/resolve/release routes.
 - **Domain (R1–R5)** — atomic claim, workspace ACL, notify outbox, keyset list, stale-claim sweep.
 - **Docs** — PLAN, ARCHITECTURE, DECISIONS, README, `docs/r1`…`r5`.

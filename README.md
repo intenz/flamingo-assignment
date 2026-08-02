@@ -12,7 +12,7 @@ Shares the **flamingo-triage** Supabase project and tables. Deploy notes: [`docs
 
 ## Time spent
 
-About **one day** end-to-end (scaffold → R1–R5 → docs → Vercel). Rough split:
+About **one day** end-to-end (scaffold → R1–R5 → docs → Vercel), plus a manual pass after AI. Rough split:
 
 | Area | ~ |
 |------|---|
@@ -23,12 +23,13 @@ About **one day** end-to-end (scaffold → R1–R5 → docs → Vercel). Rough s
 | **R4** Stable pagination | ~1h |
 | **R5** Stale claims | ~1h |
 | Deliverable docs + deploy | ~1–2h |
+| Manual review & file improvements after AI | ~3h |
 
 ## Stack
 
 | Piece | Choice |
 |-------|--------|
-| Runtime | Node **24** (`.nvmrc`; Next 16 also needs ≥20.9) |
+| Runtime | Node **≥20.9** (brief: Node 20; `.nvmrc` may be 24 locally; Next 16 minimum) |
 | App | Next.js **16** App Router, TypeScript, Tailwind 4 |
 | DB | Prisma 7 → Postgres (`prisma dev` locally; Supabase for deploy) |
 | Auth | Seeded-user picker + HMAC-signed cookie |
