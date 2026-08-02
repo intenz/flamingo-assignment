@@ -98,7 +98,7 @@ describe("R2 workspace seal and viewer read-only", () => {
 
   it("denies list for a workspace the user does not belong to", async () => {
     await expectForbidden(() =>
-      listItemsForWorkspace(WS_OTHER, USER_MEMBER, 10, prisma),
+      listItemsForWorkspace(WS_OTHER, USER_MEMBER, { take: 10, db: prisma }),
     );
   });
 
@@ -129,7 +129,10 @@ describe("R2 workspace seal and viewer read-only", () => {
   });
 
   it("allows viewer to list the home workspace (read-only)", async () => {
-    const items = await listItemsForWorkspace(WS_HOME, USER_VIEWER, 10, prisma);
+    const { items } = await listItemsForWorkspace(WS_HOME, USER_VIEWER, {
+      take: 10,
+      db: prisma,
+    });
     expect(items.length).toBeGreaterThan(0);
   });
 

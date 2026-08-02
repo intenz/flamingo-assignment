@@ -16,13 +16,12 @@ export default async function Home() {
 
   const canReadQueue = Boolean(session?.workspaceId && session?.id);
   const canMutate = Boolean(session?.role && roleCanMutate(session.role));
-  const items = canReadQueue
-    ? await listItemsForWorkspace(
-        session!.workspaceId!,
-        session!.id,
-        QUEUE_PAGE_SIZE,
-      )
-    : [];
+  const page = canReadQueue
+    ? await listItemsForWorkspace(session!.workspaceId!, session!.id, {
+        take: QUEUE_PAGE_SIZE,
+      })
+    : { items: [], nextCursor: null };
+  const items = page.items;
 
   return (
     <div className="min-h-full bg-background text-foreground">

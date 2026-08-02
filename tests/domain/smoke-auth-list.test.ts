@@ -41,7 +41,10 @@ describe("auth + list + claim smoke", () => {
   });
 
   it("lists at most QUEUE_PAGE_SIZE items for the workspace newest first", async () => {
-    const items = await listItemsForWorkspace(WORKSPACE_ID, USER_ID, QUEUE_PAGE_SIZE, prisma);
+    const { items } = await listItemsForWorkspace(WORKSPACE_ID, USER_ID, {
+      take: QUEUE_PAGE_SIZE,
+      db: prisma,
+    });
     expect(items.length).toBeGreaterThan(0);
     expect(items.length).toBeLessThanOrEqual(QUEUE_PAGE_SIZE);
     for (let i = 1; i < items.length; i++) {

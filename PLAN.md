@@ -71,7 +71,7 @@ Status legend: `[ ]` todo · `[~]` in progress · `[x]` done
 
 | # | Step | Commit message (suggested) | Status |
 |---|------|----------------------------|--------|
-| 6.1 | Keyset/cursor list API | `feat(r4): keyset pagination for moving queue` | [ ] |
+| 6.1 | Keyset/cursor list API | `feat(r4): keyset pagination for moving queue` | [x] |
 | 6.2 | Load more UI with cursor | `feat(r4): queue load-more with cursor` | [ ] |
 | 6.3 | Tests: no duplicate ids under churn | `test(r4): keyset pages stable under churn` | [ ] |
 | 6.4 | EXPLAIN ANALYZE + failure mode note | `docs(r4): explain analyze and pagination failure mode` | [ ] |
