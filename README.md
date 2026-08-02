@@ -33,6 +33,21 @@ npm run dev
 
 **Database (dev):** local via `prisma dev` (`npm run db:up` / `db:down`). Supabase can replace `DATABASE_URL` later for deploy.
 
+## Verify R1 (claim once)
+
+Atomic claim: N parallel HTTP requests, exactly one winner.
+
+```bash
+# terminal A
+npm run db:up && npm run dev
+
+# terminal B (same SESSION_SECRET / DATABASE_URL as .env)
+npm run test:r1
+# optional: BASE_URL=http://localhost:3000 npm run test:r1
+```
+
+Domain checks (no HTTP): `npx vitest run tests/domain/claim.test.ts`
+
 ## Status
 
-Schema + seed done. Auth / queue UI next (phase 2).
+R1 claim path done (atomic UPDATE, UI reconcile, domain + HTTP race). Next: R2 sealed workspaces.

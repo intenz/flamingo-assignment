@@ -45,7 +45,7 @@ Status legend: `[ ]` todo · `[~]` in progress · `[x]` done
 | 3.2 | API returns winner + current holder on loss | `feat(r1): return claim conflict with holder` | [x] |
 | 3.3 | UI reconciles without manual refresh | `feat(r1): reconcile claim race in UI` | [x] |
 | 3.4 | Domain tests: conflict + single holder | `test(r1): claim conflict and single-holder assertions` | [x] |
-| 3.5 | Parallel concurrency script + README how-to | `test(r1): parallel claim concurrency script` | [ ] |
+| 3.5 | Parallel concurrency script + README how-to | `test(r1): parallel claim concurrency script` | [x] |
 
 ## Phase 4 — R2 Sealed workspaces
 
