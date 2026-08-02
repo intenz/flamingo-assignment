@@ -54,7 +54,7 @@ Status legend: `[ ]` todo · `[~]` in progress · `[x]` done
 | 4.1 | Membership roles: owner / member / viewer | `feat(r2): workspace membership roles` | [x] |
 | 4.2 | Server-side workspace gate on every item route | `feat(r2): seal item routes to workspace membership` | [x] |
 | 4.3 | Viewer cannot claim / resolve / release | `feat(r2): enforce viewer read-only mutations` | [x] |
-| 4.4 | Tests: foreign item denied; viewer 403 | `test(r2): workspace seal and viewer read-only` | [ ] |
+| 4.4 | Tests: foreign item denied; viewer 403 | `test(r2): workspace seal and viewer read-only` | [x] |
 | 4.5 | Document check location in README/DECISIONS | `docs(r2): where workspace checks live and why` | [ ] |
 
 ## Phase 5 — R3 Resolving notifies

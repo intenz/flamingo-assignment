@@ -8,5 +8,8 @@ export default defineConfig({
     environment: "node",
     include: ["tests/**/*.test.ts"],
     setupFiles: [path.resolve(__dirname, "tests/setup.ts")],
+    // prisma-dev drops connections under parallel file workers
+    fileParallelism: false,
+    maxWorkers: 1,
   },
 });

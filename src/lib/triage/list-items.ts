@@ -1,5 +1,6 @@
-import { prisma } from "@/lib/prisma";
+import type { PrismaClient } from "@/generated/prisma/client";
 import { assertWorkspaceMember } from "@/lib/auth/membership";
+import { prisma as defaultPrisma } from "@/lib/prisma";
 
 export const QUEUE_PAGE_SIZE = 50;
 
@@ -21,10 +22,11 @@ export async function listItemsForWorkspace(
   workspaceId: string,
   userId: string,
   take: number = QUEUE_PAGE_SIZE,
+  db: PrismaClient = defaultPrisma,
 ): Promise<QueueItemRow[]> {
-  await assertWorkspaceMember(userId, workspaceId);
+  await assertWorkspaceMember(userId, workspaceId, db);
 
-  const items = await prisma.item.findMany({
+  const items = await db.item.findMany({
     where: { workspaceId },
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     take,
