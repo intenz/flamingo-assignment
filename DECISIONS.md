@@ -70,4 +70,4 @@ Four scored choices. Each: **context** / **chose** / **rejected** / **costs** / 
 
 ## Day-one refactor
 
-I'd start improving the project by extracting **shared UI components** for the team, adding **list virtualization** (windowing) on the queue table, splitting the fat hooks [`useQueueActions.ts`](src/hooks/queue/useQueueActions.ts) / [`useQueueNotifyOutbox.ts`](src/hooks/queue/useQueueNotifyOutbox.ts) into small helpers, plus **SEO** (metadata / Open Graph) and broader **performance** work (caching, bundle size, Core Web Vitals).
+I'd start with **performance** (list virtualization / windowing on the queue, `<Suspense>` so header/picker stream first, caching / `cacheTag` where it fits, bundle size, Core Web Vitals). Then **SEO** (metadata / Open Graph). After that, **structure for the team**: shared UI components and clearer splits so the project is easier to grow.
