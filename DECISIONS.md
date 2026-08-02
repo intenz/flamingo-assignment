@@ -24,7 +24,7 @@ Four scored decisions will be written here as they are forced by implementation.
 **Rejected:** Route-only guards (easy to forget on the next endpoint) and “hide buttons = secure” (curl bypasses the UI).  
 **Costs:** Every new item mutation must call the same helpers (or join Membership).  
 **Wrong later:** Multi-workspace product UIs will need richer membership caching; the seal should stay server-side.  
-**Commit:** `c6783fe`
+**Commit:** `2f21000`
 
 ---
 
