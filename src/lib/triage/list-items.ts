@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { assertWorkspaceMember } from "@/lib/auth/membership";
 
 export const QUEUE_PAGE_SIZE = 50;
 
@@ -13,12 +14,16 @@ export type QueueItemRow = {
 
 /**
  * First page of the workspace queue (newest first).
+ * R2: caller must be a member — list never spans workspaces.
  * Full keyset pagination arrives in R4 — for now we intentionally cap at N.
  */
 export async function listItemsForWorkspace(
   workspaceId: string,
+  userId: string,
   take: number = QUEUE_PAGE_SIZE,
 ): Promise<QueueItemRow[]> {
+  await assertWorkspaceMember(userId, workspaceId);
+
   const items = await prisma.item.findMany({
     where: { workspaceId },
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],

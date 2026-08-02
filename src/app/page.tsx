@@ -13,9 +13,13 @@ export default async function Home() {
     getSessionUser(),
   ]);
 
-  const canReadQueue = Boolean(session?.workspaceId);
+  const canReadQueue = Boolean(session?.workspaceId && session?.id);
   const items = canReadQueue
-    ? await listItemsForWorkspace(session!.workspaceId!, QUEUE_PAGE_SIZE)
+    ? await listItemsForWorkspace(
+        session!.workspaceId!,
+        session!.id,
+        QUEUE_PAGE_SIZE,
+      )
     : [];
 
   return (

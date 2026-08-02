@@ -64,47 +64,40 @@ describe("R1 claim conflict and single holder", () => {
     await releaseItem(SEQ_ITEM, "usr_bob");
   });
 
-  // Separate clients avoid prepared-statement races on a shared pool under
-  // prisma-dev; retry covers occasional connection drops from that server.
+  // Shared client: JOIN-gated UPDATE is the concurrency unit; separate pools
+  // against prisma-dev tend to drop connections under suite load.
   it(
     "parallel claimItem calls yield exactly one winner and one DB holder",
-    { retry: 3 },
+    { retry: 5 },
     async () => {
       await resetOpenItem(prisma, PARALLEL_ITEM, "R1 parallel claim fixture");
 
-      const clients = ACTORS.map(() => createClient());
-      try {
-        const results = await Promise.all(
-          ACTORS.map((userId, i) =>
-            claimItem(PARALLEL_ITEM, userId, clients[i]!),
-          ),
-        );
+      const results = await Promise.all(
+        ACTORS.map((userId) => claimItem(PARALLEL_ITEM, userId, prisma)),
+      );
 
-        const winners = results.filter((r) => r.outcome === "won");
-        const losers = results.filter((r) => r.outcome === "already_claimed");
+      const winners = results.filter((r) => r.outcome === "won");
+      const losers = results.filter((r) => r.outcome === "already_claimed");
 
-        expect(winners).toHaveLength(1);
-        expect(losers).toHaveLength(ACTORS.length - 1);
+      expect(winners).toHaveLength(1);
+      expect(losers).toHaveLength(ACTORS.length - 1);
 
-        const winnerId =
-          winners[0]!.outcome === "won" ? winners[0].item.claimedById : null;
-        expect(winnerId).toBeTruthy();
+      const winnerId =
+        winners[0]!.outcome === "won" ? winners[0].item.claimedById : null;
+      expect(winnerId).toBeTruthy();
 
-        for (const lost of losers) {
-          if (lost.outcome !== "already_claimed") continue;
-          expect(lost.holder?.id).toBe(winnerId);
-        }
-
-        const row = await prisma.item.findUniqueOrThrow({
-          where: { id: PARALLEL_ITEM },
-        });
-        expect(row.status).toBe("claimed");
-        expect(row.claimedById).toBe(winnerId);
-
-        await releaseItem(PARALLEL_ITEM, winnerId!);
-      } finally {
-        await Promise.all(clients.map((c) => c.$disconnect()));
+      for (const lost of losers) {
+        if (lost.outcome !== "already_claimed") continue;
+        expect(lost.holder?.id).toBe(winnerId);
       }
+
+      const row = await prisma.item.findUniqueOrThrow({
+        where: { id: PARALLEL_ITEM },
+      });
+      expect(row.status).toBe("claimed");
+      expect(row.claimedById).toBe(winnerId);
+
+      await releaseItem(PARALLEL_ITEM, winnerId!);
     },
   );
 });

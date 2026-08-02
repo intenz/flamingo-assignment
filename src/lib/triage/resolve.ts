@@ -1,15 +1,24 @@
-import { prisma } from "@/lib/prisma";
+import type { PrismaClient } from "@/generated/prisma/client";
+import { prisma as defaultPrisma } from "@/lib/prisma";
+import { assertItemAccess } from "@/lib/triage/access";
 import { TriageError } from "@/lib/triage/errors";
 
 /**
- * Stub resolve (pre-R3): marks claimed item resolved if held by actor.
- * Notify/outbox arrives in R3.
+ * Resolve: marks claimed item resolved if held by actor.
+ * Notify/outbox arrives in R3. R2: workspace + mutate role sealed first.
  */
-export async function resolveItem(itemId: string, userId: string) {
-  const item = await prisma.item.findUnique({ where: { id: itemId } });
-  if (!item) {
-    throw new TriageError("not_found", "Item not found.");
-  }
+export async function resolveItem(
+  itemId: string,
+  userId: string,
+  db: PrismaClient = defaultPrisma,
+) {
+  const { item } = await assertItemAccess(
+    userId,
+    itemId,
+    { mutate: true },
+    db,
+  );
+
   if (item.status !== "claimed" || item.claimedById !== userId) {
     throw new TriageError(
       "invalid_state",
@@ -17,7 +26,7 @@ export async function resolveItem(itemId: string, userId: string) {
     );
   }
 
-  return prisma.item.update({
+  return db.item.update({
     where: { id: itemId },
     data: {
       status: "resolved",
