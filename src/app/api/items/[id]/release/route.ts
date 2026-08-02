@@ -1,37 +1,22 @@
 import { NextResponse } from "next/server";
-import { getSessionUserId } from "@/lib/auth/session";
+import { catchTriage, requireSessionUserId } from "@/lib/api/http";
 import { releaseItem } from "@/lib/triage/release";
-import {
-  TriageError,
-  httpStatusForTriageError,
-} from "@/lib/triage/errors";
 
 type Params = { params: Promise<{ id: string }> };
 
 export async function POST(_request: Request, { params }: Params) {
-  const userId = await getSessionUserId();
-  if (!userId) {
-    return NextResponse.json(
-      { error: "unauthorized", message: "Sign in first." },
-      { status: 401 },
-    );
-  }
+  const session = await requireSessionUserId();
+  if ("response" in session) return session.response;
 
   const { id } = await params;
 
   try {
-    const item = await releaseItem(id, userId);
+    const item = await releaseItem(id, session.userId);
     return NextResponse.json({
       ok: true,
       item: { id: item.id, status: item.status },
     });
   } catch (err) {
-    if (err instanceof TriageError) {
-      return NextResponse.json(
-        { error: err.code, message: err.message },
-        { status: httpStatusForTriageError(err.code) },
-      );
-    }
-    throw err;
+    return catchTriage(err);
   }
 }

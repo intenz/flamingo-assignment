@@ -42,18 +42,29 @@ type ClaimRow = {
 };
 
 /**
- * R1 + R2: one conditional UPDATE joined to Membership (owner/member only).
- * No TOCTOU between ACL and claim; lost races return `already_claimed`.
+ * Claim an open item (R1) with ACL inside the same UPDATE (R2).
+ * Lost races → `already_claimed` (not thrown). Stale holders cleared first (R5).
  */
 export async function claimItem(
   itemId: string,
   userId: string,
   db: PrismaClient = defaultPrisma,
 ): Promise<ClaimResult> {
-  // R5: expire this row first so a stale holder does not block a fresh claim.
   await expireStaleClaimById(itemId, { db });
 
-  const won = await db.$queryRaw<ClaimRow[]>`
+  const won = await tryWinClaim(db, itemId, userId);
+  if (won) return won;
+
+  // Read-only diagnose may retry on transient DB drops (never re-run UPDATE).
+  return withTransientDbRetry(() => diagnoseLostClaim(db, itemId, userId));
+}
+
+async function tryWinClaim(
+  db: PrismaClient,
+  itemId: string,
+  userId: string,
+): Promise<Extract<ClaimResult, { outcome: "won" }> | null> {
+  const rows = await db.$queryRaw<ClaimRow[]>`
     UPDATE items AS i
     SET
       status = 'claimed',
@@ -74,21 +85,17 @@ export async function claimItem(
       (SELECT u.name FROM users AS u WHERE u.id = ${userId}) AS "claimedByName"
   `;
 
-  if (won.length === 1) {
-    const row = won[0]!;
-    return {
-      outcome: "won",
-      item: {
-        id: row.id,
-        status: "claimed",
-        claimedById: userId,
-        claimedByName: row.claimedByName,
-      },
-    };
-  }
-
-  // Read-only diagnose may retry on prisma-dev connection drops (never re-run UPDATE).
-  return withTransientDbRetry(() => diagnoseLostClaim(db, itemId, userId));
+  if (rows.length !== 1) return null;
+  const row = rows[0]!;
+  return {
+    outcome: "won",
+    item: {
+      id: row.id,
+      status: "claimed",
+      claimedById: userId,
+      claimedByName: row.claimedByName,
+    },
+  };
 }
 
 async function diagnoseLostClaim(

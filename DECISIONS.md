@@ -1,94 +1,104 @@
 # Decisions
 
-Four scored decisions will be written here as they are forced by implementation. Template for each:
-
-**Context** that forced a choice / **Chose** / **Rejected** (strongest alternative + why) / **Costs** / **Wrong later** (100× traffic, ten engineers, next requirement).
+Four scored choices for the Flamingo assignment. Each: **context** / **chose** / **rejected** / **costs** / **wrong later**. Code links point at the real implementation.
 
 ---
 
-## Decisions
+## 1. Lost claim is an outcome, not an error (R1)
 
-### 1. Lost claim is an outcome, not an error
+**Context:** Two people can claim the same open item at once. Treating the loser as a hard error makes the UI feel broken.
 
-**Context:** A lost claim race is expected concurrency, so treating it as a hard error makes the UI look broken.  
-**Chose:** Atomic `UPDATE … WHERE status='open'`, returning HTTP 200 + `already_claimed` with holder so the UI can notice, update Holder, and disable Claim.  
-**Rejected:** HTTP 409 / thrown `invalid_state` on every loss — fine for strict REST, wrong for a calm triage tool.  
-**Costs:** Clients must branch on `outcome`, not only status codes.  
-**Wrong later:** At higher traffic you’ll want clearer metrics so `already_claimed` isn’t counted as generic success.  
-**Commit:** `7c56a4a`
+**Chose:** One conditional SQL update — only `open` rows flip to `claimed`, and only for owner/member. The winner gets `outcome: "won"`. The loser gets HTTP **200** + `already_claimed` + holder, so the row can update without a full refresh.
 
-### 2. Workspace ACL lives in domain, not the UI
+**Code:** [`src/lib/triage/claim.ts`](src/lib/triage/claim.ts) · [`src/app/api/items/[id]/claim/route.ts`](src/app/api/items/[id]/claim/route.ts) · UI reconcile in [`src/hooks/useItemActions.ts`](src/hooks/useItemActions.ts)
 
-**Context:** Curl with a pasted item ID must not read or mutate across workspaces; viewers must not claim/resolve/release even if they forge a request.  
-**Chose:** Central checks in domain — `assertItemAccess` / membership helpers for resolve·release·list; claim seals via `UPDATE … JOIN Membership` (owner/member only). Foreign workspace → `403 forbidden`. UI only hides buttons for viewers.  
-**Rejected:** Route-only guards (easy to forget on the next endpoint) and “hide buttons = secure” (curl bypasses the UI).  
-**Costs:** Every new item mutation must call the same helpers (or join Membership).  
-**Wrong later:** Multi-workspace product UIs will need richer membership caching; the seal should stay server-side.  
-**Commit:** `2f21000`
+**Rejected:** HTTP 409 / thrown error on every loss — fine for strict REST, wrong for a calm triage tool.
 
-### 3. Resolve returns immediately; notify is a durable outbox
+**Costs:** Clients must read `outcome`, not only status codes.
 
-**Context:** Resolve must not wait on flaky `notify()`, and serverless cannot rely on work after the response without a durable record.  
-**Chose:** Write `NotifyOutbox` in the same TX as resolve, drain once via `after()` (plus `/api/outbox/drain`), UI polls status and retries only on a second Resolve click — guarantee **at-least-once**.  
-**Rejected:** Awaiting `notify()` in-request, fire-and-forget without a DB row, and automatic browser retry loops that re-fix the flaky helper.  
-**Costs:** HTTP 200 on resolve does not mean notify delivered.  
-**Wrong later:** High traffic needs a real worker queue with backoff, not Resolve-click retries.  
-**Commit:** `3cceeb6`
+**Wrong later:** Metrics that count every 200 as “success” will lie; you’ll want a dedicated lost-claim counter.
 
-### 4. Queue pages with keyset `after=<id>`, not OFFSET
+---
 
-**Context:** The queue moves while someone loads more; OFFSET shifts under head inserts and deep pages get expensive on ~10k+ rows.  
-**Chose:** Keyset on `(createdAt, id)` with `after=<lastItemId>` (server resolves the sort key) plus Load more — see `docs/r4-pagination.md` for EXPLAIN ANALYZE.  
-**Rejected:** OFFSET/LIMIT (duplicates under churn) and fetching the whole workspace queue.  
-**Costs:** Brand-new head inserts are invisible until refresh; a deleted `after` anchor returns 404.  
-**Wrong later:** Heavy filters need matching composite indexes; very large tables want index-only seeks without sorting the older half.  
-**Commit:** `e974f16`
+## 2. Workspace ACL lives in domain, not the UI (R2)
 
-### 5. Stale claims sweep without a daemon; resolve-after-expiry fails open
+**Context:** Someone pasting an item id into curl must not read or mutate across workspaces. Viewers must not claim/resolve/release even if they forge a request.
 
-**Context:** Vercel has no long-lived daemon, but claims must return to the queue after 30m, and a late resolve must not succeed on an expired hold.  
-**Chose:** Opportunistic sweep on list + claim, plus `POST /api/claims/sweep`; resolve/release expire first and reject with `invalid_state` when the claim is gone — see `docs/r5-stale-claims.md`.  
-**Rejected:** Relying only on an external cron (silent drift if misconfigured) and accepting resolve after expiry (lies about who held it).  
-**Costs:** Exact 30m expiry needs traffic or a scheduled hit to `/api/claims/sweep`; idle workspaces can sit stale longer.  
-**Wrong later:** Multi-region / high claim volume wants a real queue worker and metrics on sweep lag.  
-**Commit:** `c6316dd`
+**Chose:** Checks in domain — `assertItemAccess` for resolve/release; claim seals ACL inside the same `UPDATE … JOIN memberships`. Foreign workspace → **403**. UI only hides buttons for viewers.
+
+**Code:** [`src/lib/triage/access.ts`](src/lib/triage/access.ts) · [`src/lib/auth/membership.ts`](src/lib/auth/membership.ts) · claim JOIN in [`src/lib/triage/claim.ts`](src/lib/triage/claim.ts)
+
+**Rejected:** Route-only guards (easy to forget on the next endpoint) and “hide buttons = secure”.
+
+**Costs:** Every new item mutation must call the same helpers (or join memberships).
+
+**Wrong later:** Multi-workspace UIs need richer membership caching; the seal must stay server-side.
+
+---
+
+## 3. Resolve returns immediately; notify is a durable outbox (R3)
+
+**Context:** `notify()` sleeps ~1s and fails ~1/5. Resolve must not wait on it. On Vercel nothing keeps running after the response unless you recorded work first.
+
+**Chose:** Same DB transaction: mark resolved + insert `NotifyOutbox` (`pending`). Drain once via `after()`, UI polls, retry only on a second Resolve click. Named guarantee: **at-least-once**.
+
+**Code:** [`src/lib/triage/resolve.ts`](src/lib/triage/resolve.ts) · [`src/lib/triage/outbox.ts`](src/lib/triage/outbox.ts) · [`src/lib/triage/notify.ts`](src/lib/triage/notify.ts) · [`src/hooks/useNotifyOutbox.ts`](src/hooks/useNotifyOutbox.ts)
+
+**Rejected:** Await notify in the request; fire-and-forget with no DB row; automatic browser retry loops that re-hit the flaky helper.
+
+**Costs:** HTTP 200 on resolve means “outbox written”, not “notify delivered”.
+
+**Wrong later:** High traffic needs a real worker queue with backoff, not Resolve-click retries.
+
+---
+
+## 4. Queue pages with keyset `after=<id>`, not OFFSET (R4)
+
+**Context:** The queue moves while someone loads more. OFFSET shifts under head inserts; deep pages get expensive on ~10k rows.
+
+**Chose:** Keyset on `(createdAt, id)` with `after=<lastItemId>` (server resolves the sort key) + Load more. See EXPLAIN in [`docs/r4-pagination.md`](docs/r4-pagination.md).
+
+**Code:** [`src/lib/triage/list-items.ts`](src/lib/triage/list-items.ts) · [`src/hooks/useQueueLoadMore.ts`](src/hooks/useQueueLoadMore.ts) · [`src/app/api/queue/route.ts`](src/app/api/queue/route.ts)
+
+**Rejected:** OFFSET/LIMIT (duplicates under churn) and fetching the whole workspace queue.
+
+**Costs:** Brand-new head inserts stay invisible until refresh; a deleted `after` anchor returns 404.
+
+**Wrong later:** Heavy filters need matching composite indexes.
+
+---
+
+## R5 (extra — not one of the four scored slots)
+
+Claims older than 30 minutes return to `open`. No daemon: sweep on list + claim, plus optional `POST /api/claims/sweep`. Resolve after expiry fails with `invalid_state` and the row is open again.
+
+**Code:** [`src/lib/triage/stale-claims.ts`](src/lib/triage/stale-claims.ts) · [`src/lib/triage/require-holder.ts`](src/lib/triage/require-holder.ts) · [`docs/r5-stale-claims.md`](docs/r5-stale-claims.md)
 
 ---
 
 ## Deliberately not done
 
-1. **Live claim-expiry UI** — no client timer/poll; stale rows flip on the next list/claim/resolve (or F5). Server remains the source of truth.
-2. **Dedicated stale-claim cron** — no Vercel Cron job; only opportunistic sweep + optional `POST /api/claims/sweep`.
-3. **Notify worker queue** — outbox drain is `after()` + Resolve-click retry, not a separate queue with backoff/metrics.
+1. **Live claim-expiry UI** — no client timer; stale rows flip on the next list/claim/resolve (or F5).
+2. **Vercel Cron for sweep** — only opportunistic sweep + optional HTTP endpoint.
+3. **Notify worker queue** — drain is `after()` + Resolve-click retry, not a separate queue.
 
 ---
 
 ## Day-one refactor
 
-Wire a scheduled `POST /api/claims/sweep` (Vercel Cron) and a real outbox worker so expiry and notify delivery do not depend on page traffic or a second Resolve click.
+Add a scheduled sweep (Vercel Cron → `/api/claims/sweep`) and a real outbox worker so expiry and notify do not depend on page traffic or a second Resolve click.
 
 ---
 
-## Assumptions / gaps closed
+## Assumptions (gaps we closed)
 
-| When | Assumption |
-|------|------------|
-| 0.2 | Implementing all five requirements (R1–R5), not only required R1–R3. |
-| 0.2 | Target runtime Node 24; README will also note Next 16’s Node ≥20.9 floor for reviewers. |
-| 1.1 | Prisma 7 + `@prisma/adapter-pg`; client singleton at `src/lib/prisma.ts`. Generated client under `src/generated/prisma` (gitignored). |
-| 1.1b | Dev DB is **local** `prisma dev`. Production uses same Supabase project as flamingo-triage (`users`/`items` mapped tables). |
-| 1.2 | Opaque string IDs; MembershipRole + ItemStatus enums; NotifyOutbox deferred to R3. Indexes for workspace queue + keyset `(createdAt, id)`. |
-| 1.3 | Seed via Prisma `createMany` batches; ~82/12/6 status skew; Alice/Bob/Carol/Dave on `ws_flamingo`. Generator `moduleFormat = "cjs"` so tsx/Next see model delegates. |
-| 1.4 | Vitest (node env) + smoke harness; `test:r1` stub until claim API exists. Same `DATABASE_URL` as app for now. |
-| 2.1 | HMAC-SHA256 signed `flamingo_session` cookie; login/logout via Server Actions; picker shows role from `ws_flamingo`. |
-| 2.2 | Queue RSC lists first 50 newest via `listItemsForWorkspace`; unsigned → prompt; no membership → error. |
-| 2.3 | HTTP `POST /api/items/[id]/{claim,resolve,release}` + row buttons; domain stubs not yet atomic/ACL-hardened. |
-| 2.4 | Smoke: list ≤50; claim/release on fixture `itm_test_smoke_claim`; invalid cookie → null userId. |
-| 2.5 | Light Flamingo ODS tokens (pink `#f357bb`, cyan `#058c83`, bg `#fafafa`); mark from flamingo.cx; DM Sans + Azeret Mono. |
-| 3.1 | Atomic `updateMany` where `status=open`; lost race → `already_claimed` result (not thrown), for tooltip UI in 3.3. |
-| 4.2 | Seal in domain (`assertItemAccess` + claim JOIN Membership); foreign → 403; list requires membership. |
-| 4.3 | Viewer: no action buttons in UI; API still 403 via `roleCanMutate` / claim JOIN. |
-| 5.2 | `NotifyOutbox` + resolve TX; `after()` first drain; no await notify on HTTP resolve. |
-| 5.3 | UI polls outbox status; failed → click Resolve again to re-drain (no auto client retries). List hydrates pending/failed notify after refresh. |
-| 6.2 | Queue pages via `after=<lastItemId>`; server looks up `(createdAt, id)` for keyset. `GET /api/queue` + Load more. Failure mode + EXPLAIN: `docs/r4-pagination.md`. |
-| 7.2 | Stale claims: list + claim sweep, `POST /api/claims/sweep`; resolve-after-expiry → `409` + open. `docs/r5-stale-claims.md`. |
+| Topic | Choice |
+|-------|--------|
+| Scope | All five requirements (R1–R5), depth on R1–R3 first |
+| Runtime | Node 24 locally; Next 16 needs ≥20.9 for reviewers |
+| Auth | Signed cookie user picker — no OAuth ([`src/lib/auth/`](src/lib/auth/)) |
+| DB | Prisma 7 + Postgres; prod shares flamingo-triage Supabase tables |
+| Seed | ~10k items, ~82/12/6 open/claimed/resolved on `ws_flamingo` |
+| Lost claim HTTP | 200 + `already_claimed` (Decision 1) |
+| Notify guarantee | **at-least-once** (Decision 3) |
+| Stale TTL | 30 minutes — [`src/lib/triage/claim-constants.ts`](src/lib/triage/claim-constants.ts) |

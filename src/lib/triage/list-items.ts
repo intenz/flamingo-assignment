@@ -112,29 +112,46 @@ export async function listItemsForWorkspace(
   const last = page[page.length - 1];
 
   return {
-    items: page.map((item) => {
-      const latest = item.notifyOutbox[0] ?? null;
-      // Only surface undelivered notify — sent rows don't need a post-refresh banner.
-      const notify =
-        latest && latest.status !== "delivered"
-          ? {
-              outboxId: latest.id,
-              status: latest.status,
-              attempts: latest.attempts,
-              lastError: latest.lastError,
-            }
-          : null;
-
-      return {
-        id: item.id,
-        title: item.title,
-        status: item.status,
-        claimedById: item.claimedById,
-        claimedByName: item.claimedBy?.name ?? null,
-        createdAt: item.createdAt,
-        notify,
-      };
-    }),
+    items: page.map(toQueueItemRow),
     nextAfterId: hasMore && last ? last.id : null,
+  };
+}
+
+type ListedItem = {
+  id: string;
+  title: string;
+  status: QueueItemRow["status"];
+  claimedById: string | null;
+  createdAt: Date;
+  claimedBy: { id: string; name: string } | null;
+  notifyOutbox: Array<{
+    id: string;
+    status: "pending" | "delivered" | "failed";
+    attempts: number;
+    lastError: string | null;
+  }>;
+};
+
+function toQueueItemRow(item: ListedItem): QueueItemRow {
+  const latest = item.notifyOutbox[0] ?? null;
+  // Only surface undelivered notify — delivered rows need no post-refresh banner.
+  const notify =
+    latest && latest.status !== "delivered"
+      ? {
+          outboxId: latest.id,
+          status: latest.status,
+          attempts: latest.attempts,
+          lastError: latest.lastError,
+        }
+      : null;
+
+  return {
+    id: item.id,
+    title: item.title,
+    status: item.status,
+    claimedById: item.claimedById,
+    claimedByName: item.claimedBy?.name ?? null,
+    createdAt: item.createdAt,
+    notify,
   };
 }

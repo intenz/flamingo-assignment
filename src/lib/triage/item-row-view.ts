@@ -8,6 +8,13 @@ export type ItemRowState = {
 
 export type ItemAction = "claim" | "resolve" | "release";
 
+export type NoticeTone = "pending" | "delivered" | "failed" | "warning";
+
+export type ActionNotice = {
+  text: string;
+  tone: NoticeTone;
+};
+
 export function formatCreatedAt(date: Date | string): string {
   const value = typeof date === "string" ? new Date(date) : date;
   return new Intl.DateTimeFormat("en-GB", {
@@ -18,64 +25,24 @@ export function formatCreatedAt(date: Date | string): string {
 
 export function holderLabel(row: ItemRowState): string {
   if (row.status === "open") return "—";
-  // Claimed → current holder; resolved → who resolved (we keep claimedById on resolve).
   if (row.claimedByName) return row.claimedByName;
   if (row.claimedById) return row.claimedById;
   return "—";
 }
 
-export function claimTooltip(
-  row: ItemRowState,
-  canClaim: boolean,
-  claimHint: string | null,
-): string {
-  if (claimHint) return claimHint;
-  if (canClaim) return "Claim: take this item so others cannot work it.";
-  if (row.status === "claimed") {
-    return `Claim unavailable: already held by ${holderLabel(row)}.`;
-  }
-  if (row.status === "resolved") {
-    return "Claim unavailable: item is already resolved.";
-  }
-  return "Claim unavailable.";
-}
-
-export function resolveTooltip(isHolder: boolean): string {
-  return isHolder
-    ? "Resolve: mark this item done."
-    : "Resolve unavailable: only the current holder can resolve.";
-}
-
-export function releaseTooltip(isHolder: boolean): string {
-  return isHolder
-    ? "Release: return this item to the open queue."
-    : "Release unavailable: only the current holder can release.";
-}
-
-const NOTIFY_FAILED_RETRY =
-  "Notify failed. Click Resolve to retry.";
+const NOTIFY_FAILED_RETRY = "Notify failed. Click Resolve to retry.";
 
 export function formatNotifyNotice(view: {
   status: "pending" | "delivered" | "failed";
   attempts: number;
   lastError?: string | null;
 }): string {
-  if (view.status === "delivered") {
-    return "Notify: delivered.";
-  }
+  if (view.status === "delivered") return "Notify: delivered.";
   if (view.status === "pending" && view.attempts === 0) {
     return "Notify: pending…";
   }
-  // pending with attempts > 0, or terminal failed
   return NOTIFY_FAILED_RETRY;
 }
-
-export type NoticeTone = "pending" | "delivered" | "failed" | "warning";
-
-export type ActionNotice = {
-  text: string;
-  tone: NoticeTone;
-};
 
 export function noticeToneForNotifyStatus(
   status: "pending" | "delivered" | "failed",

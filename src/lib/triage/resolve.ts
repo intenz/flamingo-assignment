@@ -1,14 +1,10 @@
 import { randomBytes } from "node:crypto";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { prisma as defaultPrisma } from "@/lib/prisma";
-import { assertItemAccess } from "@/lib/triage/access";
+import { CLAIM_TTL_MS, CLAIM_EXPIRED_MESSAGE } from "@/lib/triage/claim-constants";
 import { TriageError } from "@/lib/triage/errors";
-import {
-  CLAIM_TTL_MS,
-  CLAIM_EXPIRED_MESSAGE,
-  expireStaleClaimById,
-  isClaimFresh,
-} from "@/lib/triage/stale-claims";
+import { requireFreshClaimHolder } from "@/lib/triage/require-holder";
+import { expireStaleClaimById } from "@/lib/triage/stale-claims";
 
 export type ResolveResult = {
   item: {
@@ -31,55 +27,26 @@ function newOutboxId(): string {
 }
 
 /**
- * Resolve: marks claimed item resolved + durable notify outbox (same TX).
- * Keeps `claimedById` as the resolver for Holder UI (not cleared).
- * Does not call flaky `notify()` — that is drain's job (R3 / serverless).
- *
- * R5: a claim past the 30m TTL is expired first; resolve then fails with
- * `invalid_state` + CLAIM_EXPIRED_MESSAGE (item is open again).
+ * Mark claimed → resolved and write a pending `NotifyOutbox` in one TX.
+ * Does not call flaky `notify()` (see `drainOutboxEntry` / R3).
  */
 export async function resolveItem(
   itemId: string,
   userId: string,
   db: PrismaClient = defaultPrisma,
 ): Promise<ResolveResult> {
-  await assertItemAccess(userId, itemId, { mutate: true }, db);
-
-  const expiredNow = await expireStaleClaimById(itemId, { db });
-  if (expiredNow) {
-    throw new TriageError("invalid_state", CLAIM_EXPIRED_MESSAGE);
-  }
-
-  const { item } = await assertItemAccess(
-    userId,
-    itemId,
-    { mutate: true },
-    db,
-  );
-
-  if (item.status !== "claimed" || item.claimedById !== userId) {
-    throw new TriageError(
-      "invalid_state",
-      "Only the current holder can resolve this item.",
-    );
-  }
-
-  if (!isClaimFresh(item.claimedAt)) {
-    await expireStaleClaimById(itemId, { db });
-    throw new TriageError("invalid_state", CLAIM_EXPIRED_MESSAGE);
-  }
+  await requireFreshClaimHolder(itemId, userId, "resolve", db);
 
   const resolver = await db.user.findUnique({
     where: { id: userId },
-    select: { id: true, name: true },
+    select: { name: true },
   });
-  const claimedByName = resolver?.name ?? null;
-  const message = `Item ${itemId} resolved by ${userId}`;
   const outboxId = newOutboxId();
   const cutoff = new Date(Date.now() - CLAIM_TTL_MS);
 
   try {
     await db.$transaction(async (tx) => {
+      // Conditional write: still claimed by us and within TTL (race-safe vs R5).
       const updated = await tx.item.updateMany({
         where: {
           id: itemId,
@@ -98,13 +65,8 @@ export async function resolveItem(
         throw new TriageError("invalid_state", CLAIM_EXPIRED_MESSAGE);
       }
 
-      // Shared triage schema: outbox has no message column — payload built at drain.
       await tx.notifyOutbox.create({
-        data: {
-          id: outboxId,
-          itemId,
-          status: "pending",
-        },
+        data: { id: outboxId, itemId, status: "pending" },
       });
     });
   } catch (err) {
@@ -119,8 +81,12 @@ export async function resolveItem(
       id: itemId,
       status: "resolved",
       claimedById: userId,
-      claimedByName,
+      claimedByName: resolver?.name ?? null,
     },
-    notify: { outboxId, status: "pending", message },
+    notify: {
+      outboxId,
+      status: "pending",
+      message: `Item ${itemId} resolved by ${userId}`,
+    },
   };
 }

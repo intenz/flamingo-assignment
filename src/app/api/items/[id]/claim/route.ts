@@ -1,26 +1,17 @@
 import { NextResponse } from "next/server";
-import { getSessionUserId } from "@/lib/auth/session";
+import { catchTriage, requireSessionUserId } from "@/lib/api/http";
 import { claimItem } from "@/lib/triage/claim";
-import {
-  TriageError,
-  httpStatusForTriageError,
-} from "@/lib/triage/errors";
 
 type Params = { params: Promise<{ id: string }> };
 
 export async function POST(_request: Request, { params }: Params) {
-  const userId = await getSessionUserId();
-  if (!userId) {
-    return NextResponse.json(
-      { error: "unauthorized", message: "Sign in first." },
-      { status: 401 },
-    );
-  }
+  const session = await requireSessionUserId();
+  if ("response" in session) return session.response;
 
   const { id } = await params;
 
   try {
-    const result = await claimItem(id, userId);
+    const result = await claimItem(id, session.userId);
 
     if (result.outcome === "won") {
       return NextResponse.json({
@@ -30,8 +21,7 @@ export async function POST(_request: Request, { params }: Params) {
       });
     }
 
-    // 200 on purpose — lost claim is a normal concurrency outcome for the UI
-    // (tooltip + refresh holder), not a client/server failure.
+    // 200 on purpose — lost claim is a normal concurrency outcome for the UI.
     return NextResponse.json({
       ok: false,
       outcome: "already_claimed",
@@ -40,12 +30,6 @@ export async function POST(_request: Request, { params }: Params) {
       holder: result.holder,
     });
   } catch (err) {
-    if (err instanceof TriageError) {
-      return NextResponse.json(
-        { error: err.code, message: err.message },
-        { status: httpStatusForTriageError(err.code) },
-      );
-    }
-    throw err;
+    return catchTriage(err);
   }
 }

@@ -1,17 +1,14 @@
 import { NextResponse } from "next/server";
+import { catchTriage } from "@/lib/api/http";
 import { getSessionUser } from "@/lib/auth/session";
 import {
   QUEUE_PAGE_SIZE,
   listItemsForWorkspace,
 } from "@/lib/triage/list-items";
-import {
-  TriageError,
-  httpStatusForTriageError,
-} from "@/lib/triage/errors";
 
 /**
  * Paginated workspace queue for the signed-in user's session workspace.
- * Query: `after` = last item id from previous page; `take` optional (default 50).
+ * Query: `after` = last item id; `take` optional (default 50).
  */
 export async function GET(request: Request) {
   const session = await getSessionUser();
@@ -48,12 +45,6 @@ export async function GET(request: Request) {
       nextAfterId: page.nextAfterId,
     });
   } catch (err) {
-    if (err instanceof TriageError) {
-      return NextResponse.json(
-        { error: err.code, message: err.message },
-        { status: httpStatusForTriageError(err.code) },
-      );
-    }
-    throw err;
+    return catchTriage(err);
   }
 }
