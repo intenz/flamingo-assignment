@@ -112,6 +112,28 @@ export function useItemActions(item: QueueItemRow, currentUserId: string | null)
     }
   }, [item.status, item.claimedById, item.claimedByName]);
 
+  // After refresh, restore undelivered notify from SSR/list so Resolve can retry.
+  useEffect(() => {
+    const n = item.notify;
+    if (!n || n.status === "sent") return;
+
+    setActionNotice({
+      text: formatNotifyNotice(n),
+      tone: noticeToneForNotifyStatus(
+        n.status === "pending" && n.attempts > 0 ? "failed" : n.status,
+      ),
+    });
+    // Resolver (claimedBy kept on resolve) can re-drain; others only see the notice.
+    if (currentUserId && item.claimedById === currentUserId) {
+      setRetryOutboxId(n.outboxId);
+    }
+  }, [
+    item.id,
+    item.notify,
+    item.claimedById,
+    currentUserId,
+  ]);
+
   useEffect(() => {
     return () => {
       pollGen.current += 1;

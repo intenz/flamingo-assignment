@@ -5,6 +5,14 @@ import { TriageError } from "@/lib/triage/errors";
 
 export const QUEUE_PAGE_SIZE = 50;
 
+/** Latest outbox for UI hydrate after refresh (null if none / already sent). */
+export type QueueItemNotify = {
+  outboxId: string;
+  status: "pending" | "sent" | "failed";
+  attempts: number;
+  lastError: string | null;
+};
+
 export type QueueItemRow = {
   id: string;
   title: string;
@@ -12,6 +20,8 @@ export type QueueItemRow = {
   claimedById: string | null;
   claimedByName: string | null;
   createdAt: Date;
+  /** Present when notify still needs attention (pending/failed). */
+  notify: QueueItemNotify | null;
 };
 
 export type QueuePage = {
@@ -80,6 +90,16 @@ export async function listItemsForWorkspace(
     take: take + 1,
     include: {
       claimedBy: { select: { id: true, name: true } },
+      notifyOutbox: {
+        orderBy: { createdAt: "desc" },
+        take: 1,
+        select: {
+          id: true,
+          status: true,
+          attempts: true,
+          lastError: true,
+        },
+      },
     },
   });
 
@@ -88,14 +108,29 @@ export async function listItemsForWorkspace(
   const last = page[page.length - 1];
 
   return {
-    items: page.map((item) => ({
-      id: item.id,
-      title: item.title,
-      status: item.status,
-      claimedById: item.claimedById,
-      claimedByName: item.claimedBy?.name ?? null,
-      createdAt: item.createdAt,
-    })),
+    items: page.map((item) => {
+      const latest = item.notifyOutbox[0] ?? null;
+      // Only surface undelivered notify — sent rows don't need a post-refresh banner.
+      const notify =
+        latest && latest.status !== "sent"
+          ? {
+              outboxId: latest.id,
+              status: latest.status,
+              attempts: latest.attempts,
+              lastError: latest.lastError,
+            }
+          : null;
+
+      return {
+        id: item.id,
+        title: item.title,
+        status: item.status,
+        claimedById: item.claimedById,
+        claimedByName: item.claimedBy?.name ?? null,
+        createdAt: item.createdAt,
+        notify,
+      };
+    }),
     nextAfterId: hasMore && last ? last.id : null,
   };
 }

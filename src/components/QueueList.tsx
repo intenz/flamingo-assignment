@@ -24,6 +24,7 @@ function toRow(item: QueueItemRow | QueueItemJson): QueueItemRow {
       item.createdAt instanceof Date
         ? item.createdAt
         : new Date(item.createdAt),
+    notify: item.notify ?? null,
   };
 }
 
