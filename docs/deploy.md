@@ -1,31 +1,35 @@
-# Deploy (Vercel + Postgres)
+# Deploy (Vercel + shared Supabase)
+
+Uses the **same Supabase project and tables** as `flamingo-triage`
+(`users`, `workspaces`, `memberships`, `items`, `notify_outbox`).
+Prisma schema is aligned (mapped columns, `Role`, outbox `delivered`).
 
 ## Prerequisites
 
-1. **GitHub** — push `main` (`gh auth refresh -h github.com` if token expired).
-2. **Postgres** — Supabase (or any hosted Postgres). Copy the **pooler** connection string into `DATABASE_URL`.
-3. **Vercel** — `npx vercel login`, then link the GitHub repo.
+1. **GitHub** — push `main` (`gh auth refresh` if needed).
+2. **DATABASE_URL** — same pooler URI as flamingo-triage (see `.env.production`).
+3. **SESSION_SECRET** — can reuse triage’s secret or set a new one on Vercel.
+4. **Vercel** — `npx vercel login`.
 
-## One-time setup
+## Schema / seed
+
+Production tables already exist from flamingo-triage. Do **not** run assignment-only migrations that recreate them.
 
 ```bash
-# 1. Apply schema + seed against production DATABASE_URL
-export DATABASE_URL="postgresql://…pooler.supabase.com:6543/postgres?pgbouncer=true"
-npx prisma migrate deploy
+# Optional: re-seed shared tables (wipes triage data too)
+export DATABASE_URL="…"   # from flamingo-triage
 npm run db:seed
+```
 
-# 2. Deploy
-npx vercel link          # link to the GitHub project
+Local `prisma-dev`: `npx prisma db push` after `npm run db:up`.
+
+## Deploy
+
+```bash
+npx vercel link
 npx vercel env add DATABASE_URL production
-npx vercel env add SESSION_SECRET production   # long random string
+npx vercel env add SESSION_SECRET production
 npx vercel --prod
 ```
 
-In the Vercel dashboard, confirm **Node.js Version = 24.x** (also set via `package.json` `engines.node`).
-
-Build command is already `prisma generate && next build` (`npm run build`).
-
-## After deploy
-
-- Paste the live URL into README / assignment submission.
-- Smoke: pick Bob → Claim → Resolve; pick Dave → read-only queue.
+Confirm Node.js **24.x** in project settings (`package.json` engines).

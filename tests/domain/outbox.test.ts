@@ -63,14 +63,14 @@ describe("R3 outbox resolve and drain", () => {
     });
     expect(row.status).toBe("pending");
     expect(row.attempts).toBe(0);
-    expect(row.sentAt).toBeNull();
+    expect(row.deliveredAt).toBeNull();
 
     const item = await prisma.item.findUniqueOrThrow({ where: { id: ITEM_ID } });
     expect(item.status).toBe("resolved");
     expect(item.claimedById).toBe(USER_ID);
   });
 
-  it("drain marks outbox sent when notify succeeds", async () => {
+  it("drain marks outbox delivered when notify succeeds", async () => {
     const { notify } = await resolveItem(ITEM_ID, USER_ID, prisma);
 
     const drained = await drainOutboxEntry(
@@ -78,14 +78,14 @@ describe("R3 outbox resolve and drain", () => {
       prisma,
       instantOk,
     );
-    expect(drained.status).toBe("sent");
+    expect(drained.status).toBe("delivered");
     expect(drained.attempts).toBe(1);
 
     const row = await prisma.notifyOutbox.findUniqueOrThrow({
       where: { id: notify.outboxId },
     });
-    expect(row.status).toBe("sent");
-    expect(row.sentAt).not.toBeNull();
+    expect(row.status).toBe("delivered");
+    expect(row.deliveredAt).not.toBeNull();
     expect(row.lastError).toBeNull();
   });
 
@@ -112,12 +112,12 @@ describe("R3 outbox resolve and drain", () => {
       prisma,
       instantOk,
     );
-    expect(second.status).toBe("sent");
+    expect(second.status).toBe("delivered");
     expect(second.attempts).toBe(2);
 
     const afterOk = await prisma.notifyOutbox.findUniqueOrThrow({
       where: { id: notify.outboxId },
     });
-    expect(afterOk.status).toBe("sent");
+    expect(afterOk.status).toBe("delivered");
   });
 });

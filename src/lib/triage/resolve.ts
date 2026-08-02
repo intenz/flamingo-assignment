@@ -98,11 +98,11 @@ export async function resolveItem(
         throw new TriageError("invalid_state", CLAIM_EXPIRED_MESSAGE);
       }
 
+      // Shared triage schema: outbox has no message column — payload built at drain.
       await tx.notifyOutbox.create({
         data: {
           id: outboxId,
           itemId,
-          message,
           status: "pending",
         },
       });

@@ -1,5 +1,5 @@
-// Triage queue domain — NotifyOutbox for R3 durable notify delivery.
-// IDs are opaque strings (e.g. usr_alice, itm_…); assigned in seed / app code.
+// Shared shape with flamingo-triage — same Supabase tables (users/items/…).
+// Keep moduleFormat = "cjs" so tsx/Next see model delegates.
 
 generator client {
   provider     = "prisma-client"
@@ -11,7 +11,7 @@ datasource db {
   provider = "postgresql"
 }
 
-enum MembershipRole {
+enum Role {
   owner
   member
   viewer
@@ -25,81 +25,80 @@ enum ItemStatus {
 
 enum NotifyOutboxStatus {
   pending
-  sent
+  delivered
   failed
 }
 
 model User {
-  id        String   @id
+  id        String   @id @default(cuid())
   name      String
-  createdAt DateTime @default(now())
+  email     String   @unique
+  createdAt DateTime @default(now()) @map("created_at")
 
-  memberships Membership[]
-  claims      Item[]       @relation("ItemClaimant")
+  memberships  Membership[]
+  claimedItems Item[]       @relation("ClaimedBy")
+
+  @@map("users")
 }
 
 model Workspace {
-  id        String   @id
+  id        String   @id @default(cuid())
   name      String
-  createdAt DateTime @default(now())
+  createdAt DateTime @default(now()) @map("created_at")
 
   memberships Membership[]
   items       Item[]
+
+  @@map("workspaces")
 }
 
 model Membership {
-  id          String         @id
-  workspaceId String
-  userId      String
-  role        MembershipRole
-  createdAt   DateTime       @default(now())
+  id          String @id @default(cuid())
+  workspaceId String @map("workspace_id")
+  userId      String @map("user_id")
+  role        Role
 
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([workspaceId, userId])
   @@index([userId])
+  @@map("memberships")
 }
 
 model Item {
-  id           String     @id
-  workspaceId  String
-  title        String
-  body         String     @default("")
-  status       ItemStatus @default(open)
-  claimedById  String?
-  claimedAt    DateTime?
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
+  id          String     @id @default(cuid())
+  workspaceId String     @map("workspace_id")
+  title       String
+  body        String     @default("")
+  status      ItemStatus @default(open)
+  claimedById String?    @map("claimed_by_id")
+  claimedAt   DateTime?  @map("claimed_at")
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
 
   workspace    Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  claimedBy    User?          @relation("ItemClaimant", fields: [claimedById], references: [id], onDelete: SetNull)
+  claimedBy    User?          @relation("ClaimedBy", fields: [claimedById], references: [id], onDelete: SetNull)
   notifyOutbox NotifyOutbox[]
 
-  // Queue list / keyset pagination (R4): newest-first stable order
-  @@index([workspaceId, createdAt, id])
-  // Claim / open-queue scans
-  @@index([workspaceId, status, createdAt, id])
-  @@index([claimedById])
-  // R5 stale-claim sweep: status=claimed AND claimedAt < cutoff
+  @@index([workspaceId, status, createdAt(sort: Desc), id(sort: Desc)])
+  @@index([workspaceId, id])
   @@index([status, claimedAt])
+  @@map("items")
 }
 
-/// Durable notify intent — resolve writes a row; drain calls flaky notify().
-/// At-least-once: retries while pending until sent (or max attempts → failed).
 model NotifyOutbox {
-  id        String             @id
-  itemId    String
-  message   String
-  status    NotifyOutboxStatus @default(pending)
-  attempts  Int                @default(0)
-  lastError String?
-  createdAt DateTime           @default(now())
-  updatedAt DateTime           @updatedAt
-  sentAt    DateTime?
+  id          String             @id @default(cuid())
+  itemId      String             @map("item_id")
+  status      NotifyOutboxStatus @default(pending)
+  attempts    Int                @default(0)
+  lastError   String?            @map("last_error")
+  createdAt   DateTime           @default(now()) @map("created_at")
+  updatedAt   DateTime           @updatedAt @map("updated_at")
+  deliveredAt DateTime?          @map("delivered_at")
 
   item Item @relation(fields: [itemId], references: [id], onDelete: Cascade)
 
   @@index([status, createdAt])
-  @@index([itemId])
+  @@map("notify_outbox")
 }

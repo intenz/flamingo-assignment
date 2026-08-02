@@ -99,7 +99,7 @@ UI updates after refresh or the next claim/resolve/release (no client-side expir
 
 ## Deploy
 
-See [`docs/deploy.md`](docs/deploy.md) (Vercel + hosted Postgres / Supabase).
+See [`docs/deploy.md`](docs/deploy.md). Shares the **flamingo-triage** Supabase project and tables (`users` / `items` / …).
 
 ## Status
 

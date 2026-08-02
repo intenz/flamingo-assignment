@@ -16,7 +16,7 @@ type Props = {
 
 const TONE_CLASS: Record<NoticeTone, string> = {
   pending: "bg-surface text-muted border border-border",
-  sent: "bg-success-soft text-success",
+  delivered: "bg-success-soft text-success",
   failed: "bg-danger-soft text-danger",
   warning: "bg-warning-soft text-warning",
 };

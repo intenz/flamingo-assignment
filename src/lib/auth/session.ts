@@ -2,12 +2,12 @@ import { cookies } from "next/headers";
 import { decodeSessionCookie, encodeSessionCookie, SESSION_COOKIE } from "@/lib/auth/cookie";
 import { DEFAULT_WORKSPACE_ID } from "@/lib/auth/membership";
 import { prisma } from "@/lib/prisma";
-import type { MembershipRole } from "@/generated/prisma/client";
+import type { Role } from "@/generated/prisma/client";
 
 export type SessionUser = {
   id: string;
   name: string;
-  role: MembershipRole | null;
+  role: Role | null;
   workspaceId: string | null;
 };
 

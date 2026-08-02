@@ -27,7 +27,7 @@ type ActionApiBody = {
   holder?: { id: string; name: string | null } | null;
   notify?: {
     outboxId: string;
-    status: "pending" | "sent" | "failed";
+    status: "pending" | "delivered" | "failed";
     message?: string;
   };
 };
@@ -37,7 +37,7 @@ type OutboxBody = {
   message?: string;
   error?: string;
   notify?: {
-    status: "pending" | "sent" | "failed";
+    status: "pending" | "delivered" | "failed";
     attempts: number;
     lastError: string | null;
   };
@@ -86,7 +86,7 @@ export function useItemActions(item: QueueItemRow, currentUserId: string | null)
           : notify.status,
       ),
     });
-    if (notify.status === "sent") {
+    if (notify.status === "delivered") {
       setRetryOutboxId(null);
       clearHideTimer();
       hideTimer.current = setTimeout(() => {
@@ -116,7 +116,7 @@ export function useItemActions(item: QueueItemRow, currentUserId: string | null)
   // After refresh, restore undelivered notify from SSR/list so Resolve can retry.
   useEffect(() => {
     const n = item.notify;
-    if (!n || n.status === "sent") return;
+    if (!n || n.status === "delivered") return;
 
     setActionNotice({
       text: formatNotifyNotice(n),

@@ -3,12 +3,12 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { loginAsUser, logout } from "@/app/actions/auth";
-import type { MembershipRole } from "@/generated/prisma/client";
+import type { Role } from "@/generated/prisma/client";
 
 export type PickerUser = {
   id: string;
   name: string;
-  role: MembershipRole | null;
+  role: Role | null;
 };
 
 type Props = {

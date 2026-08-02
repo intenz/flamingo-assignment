@@ -1,4 +1,4 @@
-import type { MembershipRole, PrismaClient } from "@/generated/prisma/client";
+import type { Role, PrismaClient } from "@/generated/prisma/client";
 import { prisma as defaultPrisma } from "@/lib/prisma";
 import { TriageError } from "@/lib/triage/errors";
 
@@ -9,11 +9,11 @@ export type MembershipInfo = {
   id: string;
   workspaceId: string;
   userId: string;
-  role: MembershipRole;
+  role: Role;
 };
 
 /** Roles allowed to claim / resolve / release (R2). */
-export function roleCanMutate(role: MembershipRole): boolean {
+export function roleCanMutate(role: Role): boolean {
   return role === "owner" || role === "member";
 }
 

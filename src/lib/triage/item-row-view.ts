@@ -56,11 +56,11 @@ const NOTIFY_FAILED_RETRY =
   "Notify failed. Click Resolve to retry.";
 
 export function formatNotifyNotice(view: {
-  status: "pending" | "sent" | "failed";
+  status: "pending" | "delivered" | "failed";
   attempts: number;
   lastError?: string | null;
 }): string {
-  if (view.status === "sent") {
+  if (view.status === "delivered") {
     return "Notify: delivered.";
   }
   if (view.status === "pending" && view.attempts === 0) {
@@ -70,7 +70,7 @@ export function formatNotifyNotice(view: {
   return NOTIFY_FAILED_RETRY;
 }
 
-export type NoticeTone = "pending" | "sent" | "failed" | "warning";
+export type NoticeTone = "pending" | "delivered" | "failed" | "warning";
 
 export type ActionNotice = {
   text: string;
@@ -78,7 +78,7 @@ export type ActionNotice = {
 };
 
 export function noticeToneForNotifyStatus(
-  status: "pending" | "sent" | "failed",
+  status: "pending" | "delivered" | "failed",
 ): NoticeTone {
   return status;
 }

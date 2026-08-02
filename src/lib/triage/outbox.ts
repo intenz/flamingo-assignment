@@ -9,7 +9,7 @@ export const NOTIFY_MAX_ATTEMPTS = 8;
 
 export type DrainResult = {
   outboxId: string;
-  status: "sent" | "failed" | "skipped";
+  status: "delivered" | "failed" | "skipped";
   attempts: number;
   error?: string;
 };
@@ -17,10 +17,10 @@ export type DrainResult = {
 export type OutboxStatusView = {
   outboxId: string;
   itemId: string;
-  status: "pending" | "sent" | "failed";
+  status: "pending" | "delivered" | "failed";
   attempts: number;
   lastError: string | null;
-  sentAt: string | null;
+  deliveredAt: string | null;
 };
 
 /** Workspace members can poll delivery status for an outbox row. */
@@ -44,13 +44,13 @@ export async function getOutboxStatus(
     status: row.status,
     attempts: row.attempts,
     lastError: row.lastError,
-    sentAt: row.sentAt?.toISOString() ?? null,
+    deliveredAt: row.deliveredAt?.toISOString() ?? null,
   };
 }
 
 /**
  * Attempt to deliver one outbox row via flaky `notify()`.
- * At-least-once until `sent`, or `failed` after NOTIFY_MAX_ATTEMPTS.
+ * At-least-once until `delivered`, or `failed` after NOTIFY_MAX_ATTEMPTS.
  */
 export async function drainOutboxEntry(
   outboxId: string,
@@ -61,7 +61,7 @@ export async function drainOutboxEntry(
   if (!row) {
     return { outboxId, status: "skipped", attempts: 0, error: "not_found" };
   }
-  if (row.status === "sent") {
+  if (row.status === "delivered") {
     return { outboxId, status: "skipped", attempts: row.attempts };
   }
   if (row.status === "failed" && row.attempts >= NOTIFY_MAX_ATTEMPTS) {
@@ -69,19 +69,20 @@ export async function drainOutboxEntry(
   }
 
   const attempts = row.attempts + 1;
+  const payload = `Item ${row.itemId} notify`;
 
   try {
-    await notify(row.message, notifyDeps);
+    await notify(payload, notifyDeps);
     await db.notifyOutbox.update({
       where: { id: outboxId },
       data: {
-        status: "sent",
+        status: "delivered",
         attempts,
         lastError: null,
-        sentAt: new Date(),
+        deliveredAt: new Date(),
       },
     });
-    return { outboxId, status: "sent", attempts };
+    return { outboxId, status: "delivered", attempts };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     const status = attempts >= NOTIFY_MAX_ATTEMPTS ? "failed" : "pending";

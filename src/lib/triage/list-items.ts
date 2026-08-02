@@ -9,7 +9,7 @@ export const QUEUE_PAGE_SIZE = 50;
 /** Latest outbox for UI hydrate after refresh (null if none / already sent). */
 export type QueueItemNotify = {
   outboxId: string;
-  status: "pending" | "sent" | "failed";
+  status: "pending" | "delivered" | "failed";
   attempts: number;
   lastError: string | null;
 };
@@ -116,7 +116,7 @@ export async function listItemsForWorkspace(
       const latest = item.notifyOutbox[0] ?? null;
       // Only surface undelivered notify — sent rows don't need a post-refresh banner.
       const notify =
-        latest && latest.status !== "sent"
+        latest && latest.status !== "delivered"
           ? {
               outboxId: latest.id,
               status: latest.status,

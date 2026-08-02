@@ -1,13 +1,15 @@
+/**
+ * Seed for shared flamingo-triage tables (users/items/…).
+ * Wipes triage tables then inserts ~10k items with mixed statuses.
+ */
 import "dotenv/config";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../src/generated/prisma/client";
 
 const TOTAL_ITEMS = 10_000;
 const BATCH_SIZE = 1_000;
-/** Realistic skew: most open, some in progress, few done. */
 const OPEN_RATIO = 0.82;
 const CLAIMED_RATIO = 0.12;
-// resolved = remainder (~6%)
 
 const connectionString = process.env.DATABASE_URL;
 if (!connectionString) {
@@ -19,20 +21,18 @@ const prisma = new PrismaClient({
 });
 
 async function main() {
-  console.log("Seeding flamingo triage…");
+  console.log("Seeding flamingo assignment (shared triage tables)…");
 
-  // Idempotent-ish: wipe domain tables in FK-safe order
-  await prisma.item.deleteMany();
-  await prisma.membership.deleteMany();
-  await prisma.workspace.deleteMany();
-  await prisma.user.deleteMany();
+  await prisma.$executeRawUnsafe(`
+    TRUNCATE TABLE notify_outbox, items, memberships, workspaces, users RESTART IDENTITY CASCADE;
+  `);
 
   await prisma.user.createMany({
     data: [
-      { id: "usr_alice", name: "Alice Owner" },
-      { id: "usr_bob", name: "Bob Member" },
-      { id: "usr_carol", name: "Carol Member" },
-      { id: "usr_dave", name: "Dave Viewer" },
+      { id: "usr_alice", name: "Alice Owner", email: "alice@flamingo.local" },
+      { id: "usr_bob", name: "Bob Member", email: "bob@flamingo.local" },
+      { id: "usr_carol", name: "Carol Member", email: "carol@flamingo.local" },
+      { id: "usr_dave", name: "Dave Viewer", email: "dave@flamingo.local" },
     ],
   });
 
@@ -54,14 +54,11 @@ async function main() {
   const resolvedCount = TOTAL_ITEMS - openCount - claimedCount;
   const claimants = ["usr_alice", "usr_bob", "usr_carol"] as const;
 
-  // Statuses must be mixed across time — if we assign open→claimed→resolved by
-  // index, "newest first" pages are all resolved (that was the UI bug).
   const statusDeck: Array<"open" | "claimed" | "resolved"> = [
     ...Array<"open">(openCount).fill("open"),
     ...Array<"claimed">(claimedCount).fill("claimed"),
     ...Array<"resolved">(resolvedCount).fill("resolved"),
   ];
-  // Deterministic shuffle so re-seeds are stable.
   for (let i = statusDeck.length - 1; i > 0; i--) {
     const j = (Math.imul(i + 1, 2654435761) >>> 0) % (i + 1);
     const tmp = statusDeck[i]!;
@@ -77,7 +74,6 @@ async function main() {
 
     for (let i = offset; i < end; i++) {
       const status = statusDeck[i]!;
-
       const claimedById =
         status === "open" ? null : claimants[i % claimants.length];
       const claimedAt =
@@ -91,7 +87,6 @@ async function main() {
         status,
         claimedById,
         claimedAt,
-        // Higher i = newer (list sorts createdAt desc)
         createdAt: new Date(base - (TOTAL_ITEMS - i) * 1_000),
         updatedAt: new Date(base - (TOTAL_ITEMS - i) * 1_000),
       });

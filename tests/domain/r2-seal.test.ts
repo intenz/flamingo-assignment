@@ -52,7 +52,11 @@ describe("R2 workspace seal and viewer read-only", () => {
       data: { id: WS_OTHER, name: "R2 Other Workspace" },
     });
     await prisma.user.create({
-      data: { id: USER_OUTSIDER, name: "R2 Outsider" },
+      data: {
+        id: USER_OUTSIDER,
+        name: "R2 Outsider",
+        email: "outsider@flamingo.local",
+      },
     });
     await prisma.membership.create({
       data: {

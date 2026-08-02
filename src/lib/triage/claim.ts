@@ -54,24 +54,24 @@ export async function claimItem(
   await expireStaleClaimById(itemId, { db });
 
   const won = await db.$queryRaw<ClaimRow[]>`
-    UPDATE "Item" AS i
+    UPDATE items AS i
     SET
       status = 'claimed',
-      "claimedById" = ${userId},
-      "claimedAt" = NOW(),
-      "updatedAt" = NOW()
-    FROM "Membership" AS m
+      claimed_by_id = ${userId},
+      claimed_at = NOW(),
+      updated_at = NOW()
+    FROM memberships AS m
     WHERE i.id = ${itemId}
       AND i.status = 'open'
-      AND m."workspaceId" = i."workspaceId"
-      AND m."userId" = ${userId}
-      AND m.role IN ('owner'::"MembershipRole", 'member'::"MembershipRole")
+      AND m.workspace_id = i.workspace_id
+      AND m.user_id = ${userId}
+      AND m.role IN ('owner'::"Role", 'member'::"Role")
     RETURNING
       i.id,
       i.status,
-      i."claimedById",
-      i."workspaceId",
-      (SELECT u.name FROM "User" AS u WHERE u.id = ${userId}) AS "claimedByName"
+      i.claimed_by_id AS "claimedById",
+      i.workspace_id AS "workspaceId",
+      (SELECT u.name FROM users AS u WHERE u.id = ${userId}) AS "claimedByName"
   `;
 
   if (won.length === 1) {
@@ -100,11 +100,11 @@ async function diagnoseLostClaim(
     SELECT
       i.id,
       i.status,
-      i."claimedById",
-      i."workspaceId",
+      i.claimed_by_id AS "claimedById",
+      i.workspace_id AS "workspaceId",
       u.name AS "claimedByName"
-    FROM "Item" AS i
-    LEFT JOIN "User" AS u ON u.id = i."claimedById"
+    FROM items AS i
+    LEFT JOIN users AS u ON u.id = i.claimed_by_id
     WHERE i.id = ${itemId}
   `;
 
