@@ -90,7 +90,7 @@ Status legend: `[ ]` todo · `[~]` in progress · `[x]` done
 
 | # | Step | Commit message (suggested) | Status |
 |---|------|----------------------------|--------|
-| 8.1 | README: run, seed, verify R1–R5 | `docs: README run seed and verification` | [ ] |
+| 8.1 | README: run, seed, verify R1–R5 | `docs: README run seed and verification` | [x] |
 | 8.2 | Finalize DECISIONS.md | `docs: finalize DECISIONS.md` | [ ] |
 | 8.3 | Finalize AI_USAGE.md | `docs: finalize AI_USAGE.md` | [ ] |
 

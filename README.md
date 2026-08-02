@@ -1,24 +1,33 @@
 # flamingo-assignment
 
-Concurrent triage queue for the Flamingo Full-Stack home assignment (R1–R5).
+Concurrent triage queue for the Flamingo Full-Stack home assignment (**R1–R5**).
 
 Spec: [`docs/ASSIGNMENT.md`](docs/ASSIGNMENT.md) · Design: [`ARCHITECTURE.md`](ARCHITECTURE.md) · Plan: [`PLAN.md`](PLAN.md) · Decisions: [`DECISIONS.md`](DECISIONS.md) · AI: [`AI_USAGE.md`](AI_USAGE.md)
 
 ## Stack
 
-Next.js **16.2** App Router · Node **24** (`.nvmrc`) · TypeScript · Tailwind 4 · Prisma → Supabase Postgres (next) · fake cookie auth · Vercel
+| Piece | Choice |
+|-------|--------|
+| Runtime | Node **24** (`.nvmrc`; Next 16 also needs ≥20.9) |
+| App | Next.js **16** App Router, TypeScript, Tailwind 4 |
+| DB | Prisma 7 → Postgres (`prisma dev` locally; Supabase URI for deploy) |
+| Auth | Seeded-user picker + HMAC-signed cookie (no OAuth) |
+| Deploy | Vercel (serverless) |
+
+## Run locally
 
 ```bash
-nvm use   # reads .nvmrc → 24
-cp .env.example .env
+nvm use
+cp .env.example .env          # set SESSION_SECRET; sync DATABASE_URL port after db:up
 npm install
-npm run db:up          # local Prisma Postgres (detached)
-# if the printed port differs from .env, update DATABASE_URL
+npm run db:up                 # prints postgres://… — update .env if port differs
 npm run db:generate
-npm run db:migrate
-npm run db:seed
-npm run dev
+npm run db:push               # or: npm run db:migrate
+npm run db:seed               # ~10k items + Alice/Bob/Carol/Dave
+npm run dev                   # http://localhost:3000
 ```
+
+Stop DB: `npm run db:down`. Re-seed wipes domain tables then recreates fixtures.
 
 ### Seeded users (`ws_flamingo`)
 
@@ -29,53 +38,65 @@ npm run dev
 | `usr_carol` | Carol Member | member |
 | `usr_dave` | Dave Viewer | viewer |
 
-~10 000 items: ~82% open / ~12% claimed / ~6% resolved.
+~10 000 items: ~82% open / ~12% claimed / ~6% resolved (statuses mixed across time).
 
-**Database (dev):** local via `prisma dev` (`npm run db:up` / `db:down`). Supabase can replace `DATABASE_URL` later for deploy.
+## Verify
 
-## Verify R1 (claim once)
+All domain tests:
 
-Atomic claim: N parallel HTTP requests, exactly one winner.
+```bash
+npm test          # 29 tests
+```
+
+### R1 — Claim once
+
+Exactly one winner under parallel claim. Lost race → HTTP 200 + `already_claimed` (not an error).
 
 ```bash
 # terminal A
 npm run db:up && npm run dev
 
-# terminal B (same SESSION_SECRET / DATABASE_URL as .env)
+# terminal B (same .env)
 npm run test:r1
-# optional: BASE_URL=http://localhost:3000 npm run test:r1
+# Domain only:
+npx vitest run tests/domain/claim.test.ts
 ```
 
-Domain checks (no HTTP): `npx vitest run tests/domain/claim.test.ts`
+### R2 — Sealed workspaces
 
-## Verify R2 (sealed workspaces)
-
-ACL is in domain (`src/lib/triage/access.ts`, claim `UPDATE … JOIN Membership`) — not the UI. Foreign item IDs and viewer mutations get `403`.
+ACL in domain (`src/lib/triage/access.ts`, claim `UPDATE … JOIN Membership`). Foreign IDs and viewer mutations → `403`. UI hides buttons for Dave; curl still sealed.
 
 ```bash
-# Dave Viewer: queue visible, no Claim/Resolve/Release buttons
-npm run dev   # pick usr_dave
-
-# Domain: foreign workspace denied; viewer mutations forbidden
 npx vitest run tests/domain/r2-seal.test.ts
+# Manual: pick usr_dave — queue visible, no Claim/Resolve/Release
 ```
 
-## Verify R4 (stable pagination)
+### R3 — Resolving notifies
 
-Keyset via `after=<lastItemId>` — no OFFSET. Approach, failure mode, and EXPLAIN ANALYZE: [`docs/r4-pagination.md`](docs/r4-pagination.md).
+Resolve returns immediately; flaky `notify()` drains via durable `NotifyOutbox` (`after()` + `/api/outbox/drain`). Guarantee: **at-least-once**. UI polls status; failed → click Resolve to retry.
+
+```bash
+npx vitest run tests/domain/outbox.test.ts
+```
+
+### R4 — Stable pagination
+
+Keyset via `after=<lastItemId>` (not OFFSET). Failure mode + EXPLAIN ANALYZE: [`docs/r4-pagination.md`](docs/r4-pagination.md).
 
 ```bash
 npx vitest run tests/domain/r4-keyset.test.ts
 ```
 
-## Verify R5 (stale claims)
+### R5 — Stale claims
 
-Claims older than 30m return to `open`. Sweep runs on list/claim (+ optional `POST /api/claims/sweep`). Resolve after expiry → `409` + open row. Details: [`docs/r5-stale-claims.md`](docs/r5-stale-claims.md).
+Claims older than **30 minutes** return to `open`. Sweep on list/claim (+ optional `POST /api/claims/sweep`). Resolve after expiry → `409` + open. Details: [`docs/r5-stale-claims.md`](docs/r5-stale-claims.md).
 
 ```bash
 npx vitest run tests/domain/r5-stale.test.ts
 ```
 
+UI updates after refresh or the next claim/resolve/release (no client-side expiry clock).
+
 ## Status
 
-R1–R5 implemented. Next: ship docs / deploy.
+R1–R5 implemented. Docs finalize + Vercel deploy next.
