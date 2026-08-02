@@ -33,7 +33,7 @@ Four scored decisions will be written here as they are forced by implementation.
 **Rejected:** Awaiting `notify()` in the resolve request (blocks ~1s and fails ~1/5 of resolves); fire-and-forget without a DB row (silent loss on serverless); continuous auto-retry from the browser (re-implements “fix notify” and confuses “retry N” with delivery state).  
 **Costs:** Reviewers must understand Resolve HTTP 200 ≠ notify delivered; Holder keeps `claimedById` as the resolver for display; ops may need the drain route if `after()` is truncated.  
 **Wrong later:** At higher volume you want a real worker/queue, idempotent notify keys, and backoff — not browser-driven Resolve clicks.  
-**Commit:** `e01b3da`
+**Commit:** `3cceeb6`
 
 ---
 
