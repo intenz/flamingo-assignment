@@ -1,7 +1,7 @@
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@/generated/prisma/client";
-import { listItemsForWorkspace } from "@/lib/triage/list-items";
+import { listQueue } from "@/lib/triage/queue/queue";
 
 const WS = "ws_r4_keyset";
 const USER = "usr_bob";
@@ -61,7 +61,7 @@ async function walkKeysetPages(prisma: PrismaClient) {
   const seen: string[] = [];
   let after: string | null = null;
   for (let guard = 0; guard < 20; guard++) {
-    const page = await listItemsForWorkspace(WS, USER, {
+    const page = await listQueue(WS, USER, {
       take: PAGE,
       after,
       db: prisma,
@@ -92,7 +92,7 @@ describe("R4 keyset pages under churn", () => {
   it("walks all pages without duplicate ids when newer items arrive between pages", async () => {
     const originalIds = await seedOrderedItems(prisma, ORIGINAL);
 
-    const first = await listItemsForWorkspace(WS, USER, {
+    const first = await listQueue(WS, USER, {
       take: PAGE,
       db: prisma,
     });
@@ -118,7 +118,7 @@ describe("R4 keyset pages under churn", () => {
     const rest: string[] = [];
     let after: string | null = first.nextAfterId;
     while (after) {
-      const page = await listItemsForWorkspace(WS, USER, {
+      const page = await listQueue(WS, USER, {
         take: PAGE,
         after,
         db: prisma,
@@ -139,7 +139,7 @@ describe("R4 keyset pages under churn", () => {
   it("still has no duplicates after mid-queue claim/resolve churn", async () => {
     const originalIds = await seedOrderedItems(prisma, ORIGINAL);
 
-    const first = await listItemsForWorkspace(WS, USER, {
+    const first = await listQueue(WS, USER, {
       take: PAGE,
       db: prisma,
     });
@@ -166,7 +166,7 @@ describe("R4 keyset pages under churn", () => {
     const rest: string[] = [];
     let after: string | null = first.nextAfterId;
     while (after) {
-      const page = await listItemsForWorkspace(WS, USER, {
+      const page = await listQueue(WS, USER, {
         take: PAGE,
         after,
         db: prisma,

@@ -1,8 +1,8 @@
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@/generated/prisma/client";
-import { claimItem } from "@/lib/triage/claim";
-import { releaseItem } from "@/lib/triage/release";
+import { claimItem } from "@/lib/triage/queue/actions/claim";
+import { releaseItem } from "@/lib/triage/queue/actions/release";
 
 const WORKSPACE_ID = "ws_flamingo";
 const SEQ_ITEM = "itm_test_r1_claim_seq";

@@ -60,7 +60,7 @@ async function claimAs(userId: string): Promise<{
   status: number;
   body: ClaimBody;
 }> {
-  const res = await fetch(`${BASE_URL}/api/items/${FIXTURE_ID}/claim`, {
+  const res = await fetch(`${BASE_URL}/api/queue/queue-actions/${FIXTURE_ID}/claim`, {
     method: "POST",
     headers: {
       Cookie: `${SESSION_COOKIE}=${encodeSessionCookie(userId)}`,
@@ -73,7 +73,7 @@ async function claimAs(userId: string): Promise<{
 
 async function assertServerUp() {
   try {
-    const res = await fetch(`${BASE_URL}/api/items/${FIXTURE_ID}/claim`, {
+    const res = await fetch(`${BASE_URL}/api/queue/queue-actions/${FIXTURE_ID}/claim`, {
       method: "POST",
       headers: { Accept: "application/json" },
     });

@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import { catchTriage } from "@/lib/api/http";
+import { triageErrorResponse } from "@/lib/api/http";
 import { getSessionUser } from "@/lib/auth/session";
 import {
   QUEUE_PAGE_SIZE,
-  listItemsForWorkspace,
-} from "@/lib/triage/list-items";
+  listQueue,
+} from "@/lib/triage/queue/queue";
 
 /**
  * Paginated workspace queue for the signed-in user's session workspace.
@@ -31,7 +31,7 @@ export async function GET(request: Request) {
   }
 
   try {
-    const page = await listItemsForWorkspace(
+    const page = await listQueue(
       session.workspaceId,
       session.id,
       { take, after },
@@ -45,6 +45,6 @@ export async function GET(request: Request) {
       nextAfterId: page.nextAfterId,
     });
   } catch (err) {
-    return catchTriage(err);
+    return triageErrorResponse(err);
   }
 }

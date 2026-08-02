@@ -6,14 +6,14 @@
 
 Lost races return domain `outcome: "already_claimed"` with the current holder — **not** a thrown error. Clients must branch on **`outcome`**, not only the HTTP status (lost claim is intentionally **200**).
 
-Before the UPDATE, `expireStaleClaimById` runs (R5) so a stale holder cannot block a fresh claim.
+Before the UPDATE, `reopenStaleClaimById` runs (R5) so a stale holder cannot block a fresh claim.
 
 ## Key files
 
 | Path | Role |
 |------|------|
-| `src/lib/triage/claim.ts` | Atomic UPDATE + `diagnoseLostClaim` |
-| `src/app/api/items/[id]/claim/route.ts` | HTTP mapping |
+| `src/lib/triage/queue/actions/claim.ts` | Atomic UPDATE + `diagnoseLostClaim` |
+| `src/app/api/queue/queue-actions/[id]/claim/route.ts` | HTTP mapping |
 | `tests/domain/claim.test.ts` | Sequential + parallel domain races |
 | `scripts/r1-claim-race.ts` | HTTP parallel harness (`npm run test:r1`) |
 

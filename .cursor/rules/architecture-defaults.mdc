@@ -1,0 +1,14 @@
+---
+description: Clear names, domain folders, thin client islands (DECISIONS §0)
+alwaysApply: true
+---
+
+# Architecture defaults
+
+Follow `DECISIONS.md` §0.
+
+- Name by domain intent — not UI jargon or vague helpers.
+- Group by domain under `components/`, `hooks/`, `lib/`, `app/api/`.
+- RSC = first paint + data; client only for state / events / browser APIs.
+- One owner for shared interactive state; pass props down — no duplicate hooks.
+- No Prisma/DB in client; no speculative Context; prefer local patch over full refresh when enough (see DECISIONS §1).

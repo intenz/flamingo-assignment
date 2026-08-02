@@ -1,9 +1,9 @@
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@/generated/prisma/client";
-import { claimItem } from "@/lib/triage/claim";
-import { drainOutboxEntry } from "@/lib/triage/outbox";
-import { resolveItem } from "@/lib/triage/resolve";
+import { claimItem } from "@/lib/triage/queue/actions/claim";
+import { deliverNotifyOutbox } from "@/lib/triage/queue/actions/notify-outbox";
+import { resolveItem } from "@/lib/triage/queue/actions/resolve";
 
 const WORKSPACE_ID = "ws_flamingo";
 const USER_ID = "usr_bob";
@@ -73,7 +73,7 @@ describe("R3 outbox resolve and drain", () => {
   it("drain marks outbox delivered when notify succeeds", async () => {
     const { notify } = await resolveItem(ITEM_ID, USER_ID, prisma);
 
-    const drained = await drainOutboxEntry(
+    const drained = await deliverNotifyOutbox(
       notify.outboxId,
       prisma,
       instantOk,
@@ -92,7 +92,7 @@ describe("R3 outbox resolve and drain", () => {
   it("failed drain stays pending; second drain can send (at-least-once)", async () => {
     const { notify } = await resolveItem(ITEM_ID, USER_ID, prisma);
 
-    const first = await drainOutboxEntry(
+    const first = await deliverNotifyOutbox(
       notify.outboxId,
       prisma,
       instantFail,
@@ -107,7 +107,7 @@ describe("R3 outbox resolve and drain", () => {
     expect(afterFail.attempts).toBe(1);
     expect(afterFail.lastError).toBeTruthy();
 
-    const second = await drainOutboxEntry(
+    const second = await deliverNotifyOutbox(
       notify.outboxId,
       prisma,
       instantOk,

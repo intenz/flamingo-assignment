@@ -1,9 +1,9 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@/generated/prisma/client";
-import { claimItem } from "@/lib/triage/claim";
-import { releaseItem } from "@/lib/triage/release";
-import { listItemsForWorkspace, QUEUE_PAGE_SIZE } from "@/lib/triage/list-items";
+import { claimItem } from "@/lib/triage/queue/actions/claim";
+import { releaseItem } from "@/lib/triage/queue/actions/release";
+import { listQueue, QUEUE_PAGE_SIZE } from "@/lib/triage/queue/queue";
 
 const FIXTURE_ITEM_ID = "itm_test_smoke_claim";
 const WORKSPACE_ID = "ws_flamingo";
@@ -41,7 +41,7 @@ describe("auth + list + claim smoke", () => {
   });
 
   it("lists at most QUEUE_PAGE_SIZE items for the workspace newest first", async () => {
-    const { items } = await listItemsForWorkspace(WORKSPACE_ID, USER_ID, {
+    const { items } = await listQueue(WORKSPACE_ID, USER_ID, {
       take: QUEUE_PAGE_SIZE,
       db: prisma,
     });

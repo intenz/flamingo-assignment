@@ -1,15 +1,15 @@
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@/generated/prisma/client";
-import { claimItem } from "@/lib/triage/claim";
-import { CLAIM_EXPIRED_MESSAGE, CLAIM_TTL_MS } from "@/lib/triage/claim-constants";
-import { releaseItem } from "@/lib/triage/release";
-import { resolveItem } from "@/lib/triage/resolve";
+import { claimItem } from "@/lib/triage/queue/actions/claim";
+import { CLAIM_EXPIRED_MESSAGE, CLAIM_TTL_MS } from "@/lib/triage/queue/queue-constants";
+import { releaseItem } from "@/lib/triage/queue/actions/release";
+import { resolveItem } from "@/lib/triage/queue/actions/resolve";
 import {
-  expireStaleClaimById,
-  expireStaleClaims,
+  reopenStaleClaimById,
+  reopenStaleClaims,
   isClaimFresh,
-} from "@/lib/triage/stale-claims";
+} from "@/lib/triage/queue/actions/reopen-stale-claims";
 
 const WS = "ws_flamingo";
 const USER = "usr_bob";
@@ -62,7 +62,7 @@ describe("R5 stale claims", () => {
     expect(isClaimFresh(null, now)).toBe(false);
   });
 
-  it("expireStaleClaims returns claimed rows older than TTL to open", async () => {
+  it("reopenStaleClaims returns claimed rows older than TTL to open", async () => {
     const won = await claimItem(ITEM, USER, prisma);
     expect(won.outcome).toBe("won");
 
@@ -72,11 +72,11 @@ describe("R5 stale claims", () => {
       data: { claimedAt: staleAt },
     });
 
-    const result = await expireStaleClaims({
+    const result = await reopenStaleClaims({
       workspaceId: WS,
       db: prisma,
     });
-    expect(result.expiredCount).toBeGreaterThanOrEqual(1);
+    expect(result.reopenedCount).toBeGreaterThanOrEqual(1);
 
     const row = await prisma.item.findUniqueOrThrow({ where: { id: ITEM } });
     expect(row.status).toBe("open");
@@ -88,7 +88,7 @@ describe("R5 stale claims", () => {
     const won = await claimItem(ITEM, USER, prisma);
     expect(won.outcome).toBe("won");
 
-    const flipped = await expireStaleClaimById(ITEM, { db: prisma });
+    const flipped = await reopenStaleClaimById(ITEM, { db: prisma });
     expect(flipped).toBe(false);
 
     const row = await prisma.item.findUniqueOrThrow({ where: { id: ITEM } });

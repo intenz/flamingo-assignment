@@ -10,11 +10,11 @@ There is no always-on worker. Sweep is **opportunistic + optional HTTP**:
 
 | Runner | When |
 |--------|------|
-| `listItemsForWorkspace` | Every queue page load (workspace-scoped) |
+| `listQueue` | Every queue page load (workspace-scoped) |
 | `claimItem` | Before the atomic claim — expires that row so a stale holder cannot block |
-| `POST /api/claims/sweep` | Manual / external cron (session required; scoped to the user’s workspace) |
+| `POST /api/queue/queue-reopen-claim` | Manual / external cron (session required; scoped to the user’s workspace) |
 
-Guarantee: **eventually** expired under traffic, not wall-clock exact without a scheduler hitting `/api/claims/sweep`.
+Guarantee: **eventually** expired under traffic, not wall-clock exact without a scheduler hitting `/api/queue/queue-reopen-claim`.
 
 ## Resolve after expiry
 
@@ -28,10 +28,14 @@ Release follows the same expiry-first rule.
 
 Fresh resolves still use a conditional `UPDATE … claimedAt >= cutoff` inside the outbox transaction so a claim that ages out mid-request cannot resolve.
 
+## UI truth (display only)
+
+The pill can show **`claimed · stale`** when `claimedAt` is older than 30m (`claimLooksStale`). That is a **hint** — the client does **not** flip the row to `open`. The server still owns expiry (list/claim/sweep/resolve).
+
 ## Verify
 
 ```bash
 npx vitest run tests/domain/r5-stale.test.ts
 ```
 
-UI updates after refresh or the next claim/resolve/release (no client-side expiry clock).
+Status returns to `open` after refresh or the next claim/resolve/release (or when sweep runs).

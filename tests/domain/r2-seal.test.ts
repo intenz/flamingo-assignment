@@ -1,10 +1,10 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@/generated/prisma/client";
-import { claimItem } from "@/lib/triage/claim";
-import { listItemsForWorkspace } from "@/lib/triage/list-items";
-import { resolveItem } from "@/lib/triage/resolve";
-import { releaseItem } from "@/lib/triage/release";
+import { claimItem } from "@/lib/triage/queue/actions/claim";
+import { listQueue } from "@/lib/triage/queue/queue";
+import { resolveItem } from "@/lib/triage/queue/actions/resolve";
+import { releaseItem } from "@/lib/triage/queue/actions/release";
 import { TriageError } from "@/lib/triage/errors";
 
 const WS_HOME = "ws_flamingo";
@@ -102,7 +102,7 @@ describe("R2 workspace seal and viewer read-only", () => {
 
   it("denies list for a workspace the user does not belong to", async () => {
     await expectForbidden(() =>
-      listItemsForWorkspace(WS_OTHER, USER_MEMBER, { take: 10, db: prisma }),
+      listQueue(WS_OTHER, USER_MEMBER, { take: 10, db: prisma }),
     );
   });
 
@@ -133,7 +133,7 @@ describe("R2 workspace seal and viewer read-only", () => {
   });
 
   it("allows viewer to list the home workspace (read-only)", async () => {
-    const { items } = await listItemsForWorkspace(WS_HOME, USER_VIEWER, {
+    const { items } = await listQueue(WS_HOME, USER_VIEWER, {
       take: 10,
       db: prisma,
     });

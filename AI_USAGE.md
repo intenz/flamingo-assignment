@@ -7,7 +7,7 @@ Required write-up for the Flamingo assignment.
 - **Scaffold** — Next.js 16, Node 24, Prisma 7, seed (~10k), Vitest.
 - **Shell** — signed cookie picker, queue UI, claim/resolve/release routes.
 - **Domain (R1–R5)** — atomic claim, workspace ACL, notify outbox, keyset list, stale-claim sweep.
-- **Refactor** — split hooks (`useItemActions` / `useNotifyOutbox` / `useQueueLoadMore`), shared API helpers, holder gate.
+- **Refactor** — split hooks (`useQueueActions` / `useQueueNotifyOutbox` / `useQueueLoadMore`), shared API helpers, holder gate.
 - **Docs** — PLAN, ARCHITECTURE, DECISIONS, README, `docs/r1`…`r5`.
 
 ## Two disagreements
@@ -26,11 +26,11 @@ Required write-up for the Flamingo assignment.
 
 **AI suggested:** poll a snapshot API and/or start a `CLAIM_TTL_MS` timer after Claim so the UI flips open on its own.
 
-**We did instead:** expiry stays **server-only** (list / claim / `POST /api/claims/sweep`). The UI updates on refresh or the next mutation.
+**We did instead:** expiry stays **server-only** (list / claim / `POST /api/queue/queue-reopen-claim`). The UI updates on refresh or the next mutation.
 
 **Why:** one source of truth; matches “no daemon on Vercel” without pretending the browser is the clock.
 
-**Where:** [`src/lib/triage/stale-claims.ts`](src/lib/triage/stale-claims.ts) · [`docs/r5-stale-claims.md`](docs/r5-stale-claims.md) · no client TTL in [`src/hooks/useItemActions.ts`](src/hooks/useItemActions.ts)
+**Where:** [`src/lib/triage/queue/actions/reopen-stale-claims.ts`](src/lib/triage/queue/actions/reopen-stale-claims.ts) · [`docs/r5-stale-claims.md`](docs/r5-stale-claims.md) · no client TTL in [`src/hooks/queue/useQueueActions.ts`](src/hooks/queue/useQueueActions.ts)
 
 ## How we verified output
 

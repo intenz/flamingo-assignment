@@ -65,7 +65,7 @@ Stop local DB: `npm run db:down`. Re-seed wipes domain tables then recreates fix
 | Req | Doc | Quick check |
 |-----|-----|-------------|
 | **R1** Claim once | [`docs/r1-claim-once.md`](docs/r1-claim-once.md) | `npm run test:r1` (dev up) · `npx vitest run tests/domain/claim.test.ts` |
-| **R2** Sealed workspaces | [`docs/r2-sealed-workspaces.md`](docs/r2-sealed-workspaces.md) | `npx vitest run tests/domain/r2-seal.test.ts` |
+| **R2** Sealed workspaces | [`docs/r2-sealed-workspaces.md`](docs/r2-sealed-workspaces.md) | `npx vitest run tests/domain/r2-seal.test.ts` · curl snippets in that doc |
 | **R3** Resolving notifies | [`docs/r3-resolving-notifies.md`](docs/r3-resolving-notifies.md) | `npx vitest run tests/domain/outbox.test.ts` |
 | **R4** Stable pagination | [`docs/r4-pagination.md`](docs/r4-pagination.md) | `npx vitest run tests/domain/r4-keyset.test.ts` |
 | **R5** Stale claims | [`docs/r5-stale-claims.md`](docs/r5-stale-claims.md) | `npx vitest run tests/domain/r5-stale.test.ts` |
