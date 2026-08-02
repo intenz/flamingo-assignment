@@ -48,6 +48,18 @@ npm run test:r1
 
 Domain checks (no HTTP): `npx vitest run tests/domain/claim.test.ts`
 
+## Verify R2 (sealed workspaces)
+
+ACL is in domain (`src/lib/triage/access.ts`, claim `UPDATE … JOIN Membership`) — not the UI. Foreign item IDs and viewer mutations get `403`.
+
+```bash
+# Dave Viewer: queue visible, no Claim/Resolve/Release buttons
+npm run dev   # pick usr_dave
+
+# Domain: foreign workspace denied; viewer mutations forbidden
+npx vitest run tests/domain/r2-seal.test.ts
+```
+
 ## Status
 
-R1 claim path done (atomic UPDATE, UI reconcile, domain + HTTP race). Next: R2 sealed workspaces.
+R1 + R2 done (atomic claim, sealed workspaces, viewer read-only). Next: R3 resolve notifies.

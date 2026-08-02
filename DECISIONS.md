@@ -17,6 +17,15 @@ Four scored decisions will be written here as they are forced by implementation.
 **Wrong later:** At higher traffic you’ll want clearer metrics so `already_claimed` isn’t counted as generic success.  
 **Commit:** `7c56a4a`
 
+### 2. Workspace ACL lives in domain, not the UI
+
+**Context:** Curl with a pasted item ID must not read or mutate across workspaces; viewers must not claim/resolve/release even if they forge a request.  
+**Chose:** Central checks in domain — `assertItemAccess` / membership helpers for resolve·release·list; claim seals via `UPDATE … JOIN Membership` (owner/member only). Foreign workspace → `403 forbidden`. UI only hides buttons for viewers.  
+**Rejected:** Route-only guards (easy to forget on the next endpoint) and “hide buttons = secure” (curl bypasses the UI).  
+**Costs:** Every new item mutation must call the same helpers (or join Membership).  
+**Wrong later:** Multi-workspace product UIs will need richer membership caching; the seal should stay server-side.  
+**Commit:** `c6783fe`
+
 ---
 
 ## Deliberately not done
@@ -48,3 +57,5 @@ _(one line — filled near ship)_
 | 2.4 | Smoke: list ≤50; claim/release on fixture `itm_test_smoke_claim`; invalid cookie → null userId. |
 | 2.5 | Light Flamingo ODS tokens (pink `#f357bb`, cyan `#058c83`, bg `#fafafa`); mark from flamingo.cx; DM Sans + Azeret Mono. |
 | 3.1 | Atomic `updateMany` where `status=open`; lost race → `already_claimed` result (not thrown), for tooltip UI in 3.3. |
+| 4.2 | Seal in domain (`assertItemAccess` + claim JOIN Membership); foreign → 403; list requires membership. |
+| 4.3 | Viewer: no action buttons in UI; API still 403 via `roleCanMutate` / claim JOIN. |
