@@ -12,7 +12,7 @@ import {
   formatNotifyNotice,
   noticeToneForNotifyStatus,
 } from "@/lib/triage/item-row-view";
-import { CLAIM_EXPIRED_MESSAGE, CLAIM_TTL_MS } from "@/lib/triage/claim-constants";
+import { CLAIM_EXPIRED_MESSAGE } from "@/lib/triage/claim-constants";
 
 type ActionApiBody = {
   ok?: boolean;
@@ -64,63 +64,12 @@ export function useItemActions(item: QueueItemRow, currentUserId: string | null)
   const [row, setRow] = useState<ItemRowState>(() => fromProps(item));
   const pollGen = useRef(0);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const claimExpiryTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   function clearHideTimer() {
     if (hideTimer.current) {
       clearTimeout(hideTimer.current);
       hideTimer.current = null;
     }
-  }
-
-  function clearClaimExpiryTimer() {
-    if (claimExpiryTimer.current) {
-      clearTimeout(claimExpiryTimer.current);
-      claimExpiryTimer.current = null;
-    }
-  }
-
-  /**
-   * After Claim: wait CLAIM_TTL_MS, then re-read this row from the backend
-   * (snapshot runs server sweep). Expiry decision stays on the server.
-   */
-  function scheduleClaimExpiryCheck() {
-    clearClaimExpiryTimer();
-    claimExpiryTimer.current = setTimeout(() => {
-      claimExpiryTimer.current = null;
-      void (async () => {
-        try {
-          const res = await fetch(
-            `/api/queue/snapshot?ids=${encodeURIComponent(item.id)}`,
-          );
-          if (!res.ok) return;
-          const body = (await res.json()) as {
-            items?: Array<{
-              id: string;
-              status: QueueItemRow["status"];
-              claimedById: string | null;
-              claimedByName: string | null;
-            }>;
-          };
-          const snap = body.items?.find((row) => row.id === item.id);
-          if (!snap) return;
-          setRow({
-            status: snap.status,
-            claimedById: snap.claimedById,
-            claimedByName: snap.claimedByName,
-          });
-          if (snap.status === "open") {
-            setActionNotice({
-              text: CLAIM_EXPIRED_MESSAGE,
-              tone: "warning",
-            });
-            setRetryOutboxId(null);
-          }
-        } catch {
-          // Next user action / refresh will reconcile.
-        }
-      })();
-    }, CLAIM_TTL_MS);
   }
 
   /** Show notify status; auto-hide only when delivered. */
@@ -159,7 +108,6 @@ export function useItemActions(item: QueueItemRow, currentUserId: string | null)
     setRow(fromProps(item));
     if (item.status === "open") {
       clearHideTimer();
-      clearClaimExpiryTimer();
       setActionNotice(null);
       setRetryOutboxId(null);
     }
@@ -191,7 +139,6 @@ export function useItemActions(item: QueueItemRow, currentUserId: string | null)
     return () => {
       pollGen.current += 1;
       clearHideTimer();
-      clearClaimExpiryTimer();
     };
   }, []);
 
@@ -261,7 +208,6 @@ export function useItemActions(item: QueueItemRow, currentUserId: string | null)
     if (action === "claim") {
       setActionNotice(null);
       setRetryOutboxId(null);
-      clearClaimExpiryTimer();
     }
 
     // Already resolved: Resolve re-drains the pending/failed outbox (no new resolve).
@@ -341,12 +287,10 @@ export function useItemActions(item: QueueItemRow, currentUserId: string | null)
           claimedByName: body.item?.claimedByName ?? null,
         });
         setActionNotice(null);
-        scheduleClaimExpiryCheck();
         return;
       }
 
       if (action === "resolve" && body.notify?.outboxId) {
-        clearClaimExpiryTimer();
         const status = body.notify.status ?? "pending";
         setRow({
           status: "resolved",
@@ -362,7 +306,6 @@ export function useItemActions(item: QueueItemRow, currentUserId: string | null)
       }
 
       if (action === "release" && body.ok !== false) {
-        clearClaimExpiryTimer();
         setRow({
           status: "open",
           claimedById: null,
