@@ -81,6 +81,8 @@ model Item {
   // Claim / open-queue scans
   @@index([workspaceId, status, createdAt, id])
   @@index([claimedById])
+  // R5 stale-claim sweep: status=claimed AND claimedAt < cutoff
+  @@index([status, claimedAt])
 }
 
 /// Durable notify intent — resolve writes a row; drain calls flaky notify().
