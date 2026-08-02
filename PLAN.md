@@ -98,8 +98,8 @@ Status legend: `[ ]` todo · `[~]` in progress · `[x]` done
 
 | # | Step | Commit message (suggested) | Status |
 |---|------|----------------------------|--------|
-| 9.1 | Deploy to Vercel | `chore: vercel deploy wiring` | [ ] |
-| 9.2 | Live URL + time spent note | `docs: live URL and time calibration` | [ ] |
+| 9.1 | Deploy to Vercel | `chore: vercel deploy wiring` | [x] |
+| 9.2 | Live URL + time spent note | `docs: live URL and time calibration` | [x] |
 
 ---
 

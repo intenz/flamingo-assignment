@@ -27,3 +27,11 @@ If the holder resolves after the claim is past TTL:
 Release follows the same expiry-first rule.
 
 Fresh resolves still use a conditional `UPDATE … claimedAt >= cutoff` inside the outbox transaction so a claim that ages out mid-request cannot resolve.
+
+## Verify
+
+```bash
+npx vitest run tests/domain/r5-stale.test.ts
+```
+
+UI updates after refresh or the next claim/resolve/release (no client-side expiry clock).

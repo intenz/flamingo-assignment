@@ -8,7 +8,7 @@ Required write-up for the Flamingo assignment.
 - **Auth / triage shell:** HMAC cookie picker; queue list; claim/resolve/release APIs.
 - **R1–R5 domain:** atomic claim, workspace ACL, notify outbox, keyset pagination, stale-claim sweep.
 - **Visual:** light flamingo.run tokens + mark, DM Sans / Azeret Mono, dense queue table (~80% width).
-- **Docs:** PLAN, ARCHITECTURE, DECISIONS, README verify sections, R4/R5 notes with EXPLAIN.
+- **Docs:** PLAN, ARCHITECTURE, DECISIONS, slim README + per-req notes (`docs/r1`…`r5`, R4 EXPLAIN).
 
 ## Disagreements (two places)
 

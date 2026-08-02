@@ -4,30 +4,50 @@ Concurrent triage queue for the Flamingo Full-Stack home assignment (**R1–R5**
 
 Spec: [`docs/ASSIGNMENT.md`](docs/ASSIGNMENT.md) · Design: [`ARCHITECTURE.md`](ARCHITECTURE.md) · Plan: [`PLAN.md`](PLAN.md) · Decisions: [`DECISIONS.md`](DECISIONS.md) · AI: [`AI_USAGE.md`](AI_USAGE.md)
 
+## Live URL
+
+**Production:** [https://flamingo-assignment.vercel.app](https://flamingo-assignment.vercel.app)
+
+Shares the **flamingo-triage** Supabase project and tables. Deploy notes: [`docs/deploy.md`](docs/deploy.md).
+
+## Time spent
+
+About **one day** end-to-end (scaffold → R1–R5 → docs → Vercel). Rough split:
+
+| Area | ~ |
+|------|---|
+| Bootstrap + Prisma/seed + auth/UI shell | ~2–3h |
+| **R1** Claim once | ~1.5h |
+| **R2** Sealed workspaces | ~1h |
+| **R3** Resolving notifies | ~1.5h |
+| **R4** Stable pagination | ~1h |
+| **R5** Stale claims | ~1h |
+| Deliverable docs + deploy | ~1–2h |
+
 ## Stack
 
 | Piece | Choice |
 |-------|--------|
 | Runtime | Node **24** (`.nvmrc`; Next 16 also needs ≥20.9) |
 | App | Next.js **16** App Router, TypeScript, Tailwind 4 |
-| DB | Prisma 7 → Postgres (`prisma dev` locally; Supabase URI for deploy) |
-| Auth | Seeded-user picker + HMAC-signed cookie (no OAuth) |
-| Deploy | Vercel (serverless) |
+| DB | Prisma 7 → Postgres (`prisma dev` locally; Supabase for deploy) |
+| Auth | Seeded-user picker + HMAC-signed cookie |
+| Deploy | Vercel |
 
 ## Run locally
 
 ```bash
 nvm use
-cp .env.example .env          # set SESSION_SECRET; sync DATABASE_URL port after db:up
+cp .env.example .env          # SESSION_SECRET; DATABASE_URL after db:up (or Supabase URI)
 npm install
-npm run db:up                 # prints postgres://… — update .env if port differs
+npm run db:up                 # skip if using Supabase
 npm run db:generate
-npm run db:push               # or: npm run db:migrate
+npm run db:push
 npm run db:seed               # ~10k items + Alice/Bob/Carol/Dave
 npm run dev                   # http://localhost:3000
 ```
 
-Stop DB: `npm run db:down`. Re-seed wipes domain tables then recreates fixtures.
+Stop local DB: `npm run db:down`. Re-seed wipes domain tables then recreates fixtures.
 
 ### Seeded users (`ws_flamingo`)
 
@@ -38,69 +58,16 @@ Stop DB: `npm run db:down`. Re-seed wipes domain tables then recreates fixtures.
 | `usr_carol` | Carol Member | member |
 | `usr_dave` | Dave Viewer | viewer |
 
-~10 000 items: ~82% open / ~12% claimed / ~6% resolved (statuses mixed across time).
+~10 000 items: ~82% open / ~12% claimed / ~6% resolved.
 
-## Verify
+## Requirements (how we did them)
 
-All domain tests:
+| Req | Doc | Quick check |
+|-----|-----|-------------|
+| **R1** Claim once | [`docs/r1-claim-once.md`](docs/r1-claim-once.md) | `npm run test:r1` (dev up) · `npx vitest run tests/domain/claim.test.ts` |
+| **R2** Sealed workspaces | [`docs/r2-sealed-workspaces.md`](docs/r2-sealed-workspaces.md) | `npx vitest run tests/domain/r2-seal.test.ts` |
+| **R3** Resolving notifies | [`docs/r3-resolving-notifies.md`](docs/r3-resolving-notifies.md) | `npx vitest run tests/domain/outbox.test.ts` |
+| **R4** Stable pagination | [`docs/r4-pagination.md`](docs/r4-pagination.md) | `npx vitest run tests/domain/r4-keyset.test.ts` |
+| **R5** Stale claims | [`docs/r5-stale-claims.md`](docs/r5-stale-claims.md) | `npx vitest run tests/domain/r5-stale.test.ts` |
 
-```bash
-npm test          # 29 tests
-```
-
-### R1 — Claim once
-
-Exactly one winner under parallel claim. Lost race → HTTP 200 + `already_claimed` (not an error).
-
-```bash
-# terminal A
-npm run db:up && npm run dev
-
-# terminal B (same .env)
-npm run test:r1
-# Domain only:
-npx vitest run tests/domain/claim.test.ts
-```
-
-### R2 — Sealed workspaces
-
-ACL in domain (`src/lib/triage/access.ts`, claim `UPDATE … JOIN Membership`). Foreign IDs and viewer mutations → `403`. UI hides buttons for Dave; curl still sealed.
-
-```bash
-npx vitest run tests/domain/r2-seal.test.ts
-# Manual: pick usr_dave — queue visible, no Claim/Resolve/Release
-```
-
-### R3 — Resolving notifies
-
-Resolve returns immediately; flaky `notify()` drains via durable `NotifyOutbox` (`after()` + `/api/outbox/drain`). Guarantee: **at-least-once**. UI polls status; failed → click Resolve to retry.
-
-```bash
-npx vitest run tests/domain/outbox.test.ts
-```
-
-### R4 — Stable pagination
-
-Keyset via `after=<lastItemId>` (not OFFSET). Failure mode + EXPLAIN ANALYZE: [`docs/r4-pagination.md`](docs/r4-pagination.md).
-
-```bash
-npx vitest run tests/domain/r4-keyset.test.ts
-```
-
-### R5 — Stale claims
-
-Claims older than **30 minutes** return to `open`. Sweep on list/claim (+ optional `POST /api/claims/sweep`). Resolve after expiry → `409` + open. Details: [`docs/r5-stale-claims.md`](docs/r5-stale-claims.md).
-
-```bash
-npx vitest run tests/domain/r5-stale.test.ts
-```
-
-UI updates after refresh or the next claim/resolve/release (no client-side expiry clock).
-
-## Deploy
-
-See [`docs/deploy.md`](docs/deploy.md). Shares the **flamingo-triage** Supabase project and tables (`users` / `items` / …).
-
-## Status
-
-R1–R5 and deliverable docs done. Deploy wiring ready — needs GitHub auth + production `DATABASE_URL` + `vercel login`.
+Full suite: `npm test`.
