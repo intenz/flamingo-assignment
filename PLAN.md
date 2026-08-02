@@ -51,7 +51,7 @@ Status legend: `[ ]` todo · `[~]` in progress · `[x]` done
 
 | # | Step | Commit message (suggested) | Status |
 |---|------|----------------------------|--------|
-| 4.1 | Membership roles: owner / member / viewer | `feat(r2): workspace membership roles` | [ ] |
+| 4.1 | Membership roles: owner / member / viewer | `feat(r2): workspace membership roles` | [x] |
 | 4.2 | Server-side workspace gate on every item route | `feat(r2): seal item routes to workspace membership` | [ ] |
 | 4.3 | Viewer cannot claim / resolve / release | `feat(r2): enforce viewer read-only mutations` | [ ] |
 | 4.4 | Tests: foreign item denied; viewer 403 | `test(r2): workspace seal and viewer read-only` | [ ] |

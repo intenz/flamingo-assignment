@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { decodeSessionCookie, encodeSessionCookie, SESSION_COOKIE } from "@/lib/auth/cookie";
+import { DEFAULT_WORKSPACE_ID } from "@/lib/auth/membership";
 import { prisma } from "@/lib/prisma";
 import type { MembershipRole } from "@/generated/prisma/client";
 
@@ -9,8 +10,6 @@ export type SessionUser = {
   role: MembershipRole | null;
   workspaceId: string | null;
 };
-
-const DEFAULT_WORKSPACE_ID = "ws_flamingo";
 
 export async function getSessionUserId(): Promise<string | null> {
   const jar = await cookies();
