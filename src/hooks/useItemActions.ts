@@ -105,13 +105,28 @@ export function useItemActions(item: QueueItemRow, currentUserId: string | null)
   }
 
   useEffect(() => {
-    setRow(fromProps(item));
-    if (item.status === "open") {
-      clearHideTimer();
-      setActionNotice(null);
-      setRetryOutboxId(null);
-    }
-  }, [item.status, item.claimedById, item.claimedByName]);
+    setRow((prev) => {
+      const expiredMine =
+        prev.status === "claimed" &&
+        prev.claimedById === currentUserId &&
+        item.status === "open";
+
+      if (expiredMine) {
+        clearHideTimer();
+        setActionNotice({
+          text: CLAIM_EXPIRED_MESSAGE,
+          tone: "warning",
+        });
+        setRetryOutboxId(null);
+      } else if (item.status === "open") {
+        clearHideTimer();
+        setActionNotice(null);
+        setRetryOutboxId(null);
+      }
+
+      return fromProps(item);
+    });
+  }, [item.status, item.claimedById, item.claimedByName, currentUserId]);
 
   // After refresh, restore undelivered notify from SSR/list so Resolve can retry.
   useEffect(() => {

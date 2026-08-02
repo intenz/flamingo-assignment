@@ -1,11 +1,22 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { QueueRowActions } from "@/components/QueueRowActions";
 import type { QueueItemRow } from "@/lib/triage/list-items";
 
+/** How often to ask the backend for claimed-row truth (expiry decided server-side). */
+const SNAPSHOT_POLL_MS = 2_000;
+
 type QueueItemJson = Omit<QueueItemRow, "createdAt"> & {
   createdAt: string;
+};
+
+type SnapshotItem = {
+  id: string;
+  status: QueueItemRow["status"];
+  claimedById: string | null;
+  claimedByName: string | null;
+  notify: QueueItemRow["notify"];
 };
 
 type Props = {
@@ -39,6 +50,64 @@ export function QueueList({
   const [nextAfterId, setNextAfterId] = useState(initialNextAfterId);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+
+  const claimedIdsKey = items
+    .filter((item) => item.status === "claimed")
+    .map((item) => item.id)
+    .sort()
+    .join(",");
+
+  // While claimed rows are visible, poll backend snapshot (sweep + current state).
+  useEffect(() => {
+    if (!claimedIdsKey) return;
+
+    let cancelled = false;
+
+    async function pullSnapshot() {
+      try {
+        const res = await fetch(
+          `/api/queue/snapshot?ids=${encodeURIComponent(claimedIdsKey)}`,
+        );
+        if (!res.ok || cancelled) return;
+        const body = (await res.json()) as { items?: SnapshotItem[] };
+        const byId = new Map((body.items ?? []).map((row) => [row.id, row]));
+        if (byId.size === 0 || cancelled) return;
+
+        setItems((prev) =>
+          prev.map((row) => {
+            const next = byId.get(row.id);
+            if (!next) return row;
+            if (
+              next.status === row.status &&
+              next.claimedById === row.claimedById &&
+              next.claimedByName === row.claimedByName
+            ) {
+              return row;
+            }
+            return {
+              ...row,
+              status: next.status,
+              claimedById: next.claimedById,
+              claimedByName: next.claimedByName,
+              notify: next.notify ?? null,
+            };
+          }),
+        );
+      } catch {
+        // Transient poll failures are fine — next tick retries.
+      }
+    }
+
+    void pullSnapshot();
+    const timer = setInterval(() => {
+      void pullSnapshot();
+    }, SNAPSHOT_POLL_MS);
+
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [claimedIdsKey]);
 
   function loadMore() {
     if (!nextAfterId || pending) return;

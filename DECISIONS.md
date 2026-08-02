@@ -89,4 +89,4 @@ _(one line — filled near ship)_
 | 5.2 | `NotifyOutbox` + resolve TX; `after()` first drain; no await notify on HTTP resolve. |
 | 5.3 | UI polls outbox status; failed → click Resolve again to re-drain (no auto client retries). List hydrates pending/failed notify after refresh. |
 | 6.2 | Queue pages via `after=<lastItemId>`; server looks up `(createdAt, id)` for keyset. `GET /api/queue` + Load more. Failure mode + EXPLAIN: `docs/r4-pagination.md`. |
-| 7.2 | Stale claims: list + claim sweep, `POST /api/claims/sweep`; resolve-after-expiry → `409` + open. `docs/r5-stale-claims.md`. |
+| 7.2 | Stale claims: list + claim + snapshot poll sweep, `POST /api/claims/sweep`; resolve-after-expiry → `409` + open. `docs/r5-stale-claims.md`. |
