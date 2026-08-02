@@ -51,7 +51,7 @@ Four scored decisions will be written here as they are forced by implementation.
 **Rejected:** Relying only on an external cron (silent drift if misconfigured) and accepting resolve after expiry (lies about who held it).  
 **Costs:** Exact 30m expiry needs traffic or a scheduled hit to `/api/claims/sweep`; idle workspaces can sit stale longer.  
 **Wrong later:** Multi-region / high claim volume wants a real queue worker and metrics on sweep lag.  
-**Commit:** _(docs commit)_
+**Commit:** `c6316dd`
 
 ---
 
