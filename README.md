@@ -99,4 +99,4 @@ UI updates after refresh or the next claim/resolve/release (no client-side expir
 
 ## Status
 
-R1–R5 implemented. Docs finalize + Vercel deploy next.
+R1–R5 and deliverable docs done. Next: Vercel deploy + live URL.
