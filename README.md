@@ -16,7 +16,7 @@ About **one day** end-to-end (scaffold → R1–R5 → docs → Vercel), plus a 
 
 | Area | ~ |
 |------|---|
-| Bootstrap + Prisma/seed + auth/UI shell | ~2–3h |
+| Bootstrap + Prisma/seed + auth/UI shell | ~1h |
 | **R1** Claim once | ~1.5h |
 | **R2** Sealed workspaces | ~1h |
 | **R3** Resolving notifies | ~1.5h |
