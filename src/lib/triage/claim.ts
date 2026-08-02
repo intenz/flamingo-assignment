@@ -1,4 +1,5 @@
-import { prisma } from "@/lib/prisma";
+import type { PrismaClient } from "@/generated/prisma/client";
+import { prisma as defaultPrisma } from "@/lib/prisma";
 import { TriageError } from "@/lib/triage/errors";
 
 export type ClaimHolder = {
@@ -29,71 +30,80 @@ export type ClaimResult =
       message: string;
     };
 
+type ClaimRow = {
+  id: string;
+  status: "open" | "claimed" | "resolved";
+  claimedById: string | null;
+  claimedByName: string | null;
+};
+
 /**
  * R1: exactly one winner under concurrency.
- * Single conditional UPDATE — if count is 0, someone else claimed (or state changed).
+ * One conditional `UPDATE … WHERE status = 'open' RETURNING` — no TOCTOU gap.
  * Lost races return `already_claimed` (informative), not a thrown error.
  */
 export async function claimItem(
   itemId: string,
   userId: string,
+  db: PrismaClient = defaultPrisma,
 ): Promise<ClaimResult> {
-  const existing = await prisma.item.findUnique({
-    where: { id: itemId },
-    include: { claimedBy: { select: { id: true, name: true } } },
-  });
-  if (!existing) {
-    throw new TriageError("not_found", "Item not found.");
-  }
+  const won = await db.$queryRaw<ClaimRow[]>`
+    UPDATE "Item" AS i
+    SET
+      status = 'claimed',
+      "claimedById" = ${userId},
+      "claimedAt" = NOW(),
+      "updatedAt" = NOW()
+    WHERE i.id = ${itemId}
+      AND i.status = 'open'
+    RETURNING
+      i.id,
+      i.status,
+      i."claimedById",
+      (SELECT u.name FROM "User" AS u WHERE u.id = ${userId}) AS "claimedByName"
+  `;
 
-  const updated = await prisma.item.updateMany({
-    where: { id: itemId, status: "open" },
-    data: {
-      status: "claimed",
-      claimedById: userId,
-      claimedAt: new Date(),
-    },
-  });
-
-  if (updated.count === 1) {
-    const holder = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { id: true, name: true },
-    });
+  if (won.length === 1) {
+    const row = won[0]!;
     return {
       outcome: "won",
       item: {
-        id: itemId,
+        id: row.id,
         status: "claimed",
         claimedById: userId,
-        claimedByName: holder?.name ?? null,
+        claimedByName: row.claimedByName,
       },
     };
   }
 
-  // Lost race or already non-open — re-read current state for the UI.
-  const current = await prisma.item.findUnique({
-    where: { id: itemId },
-    include: { claimedBy: { select: { id: true, name: true } } },
-  });
-  if (!current) {
+  const current = await db.$queryRaw<ClaimRow[]>`
+    SELECT
+      i.id,
+      i.status,
+      i."claimedById",
+      u.name AS "claimedByName"
+    FROM "Item" AS i
+    LEFT JOIN "User" AS u ON u.id = i."claimedById"
+    WHERE i.id = ${itemId}
+  `;
+
+  if (current.length === 0) {
     throw new TriageError("not_found", "Item not found.");
   }
 
-  const holder = current.claimedBy
-    ? { id: current.claimedBy.id, name: current.claimedBy.name }
-    : current.claimedById
-      ? { id: current.claimedById, name: null }
-      : null;
-
+  const row = current[0]!;
+  const holder = row.claimedById
+    ? { id: row.claimedById, name: row.claimedByName }
+    : null;
   const who = holder?.name ?? holder?.id ?? "someone else";
+
   return {
     outcome: "already_claimed",
     item: {
-      id: current.id,
-      status: current.status,
-      claimedById: current.claimedById,
-      claimedByName: holder?.name ?? null,
+      id: row.id,
+      status: row.status,
+      claimedById: row.claimedById,
+      claimedByName: row.claimedByName,
     },
     holder,
     message: `Already claimed by ${who}.`,
