@@ -26,13 +26,13 @@ Four scored decisions will be written here as they are forced by implementation.
 **Wrong later:** Multi-workspace product UIs will need richer membership caching; the seal should stay server-side.  
 **Commit:** `2f21000`
 
-### 3. Resolve returns immediately; notify is durable outbox, not in-request retries
+### 3. Resolve returns immediately; notify is a durable outbox
 
-**Context:** Spec forbids making `notify()` reliable and forbids waiting on it before resolve returns; we are on serverless so work after the response must not assume a long-lived process. Early UI auto-drained the outbox in a poll loop, which felt like hidden retries of the flaky helper and made the page noisy.  
-**Chose:** (1) Persist a `NotifyOutbox` row in the same transaction as `item → resolved`. (2) Schedule one drain via Next.js `after()` (platform `waitUntil`) plus `POST /api/outbox/drain` for ops/cron. (3) UI only **polls status** after resolve; a failed delivery stays visible and a **second Resolve click** re-drains that outbox — no automatic client retry storm. Guarantee named: **at-least-once** while the row is `pending`/`failed` under max attempts (record survives process death; duplicate drains are acceptable).  
-**Rejected:** Awaiting `notify()` in the resolve request (blocks ~1s and fails ~1/5 of resolves); fire-and-forget without a DB row (silent loss on serverless); continuous auto-retry from the browser (re-implements “fix notify” and confuses “retry N” with delivery state).  
-**Costs:** Reviewers must understand Resolve HTTP 200 ≠ notify delivered; Holder keeps `claimedById` as the resolver for display; ops may need the drain route if `after()` is truncated.  
-**Wrong later:** At higher volume you want a real worker/queue, idempotent notify keys, and backoff — not browser-driven Resolve clicks.  
+**Context:** Resolve must not wait on flaky `notify()`, and serverless cannot rely on work after the response without a durable record.  
+**Chose:** Write `NotifyOutbox` in the same TX as resolve, drain once via `after()` (plus `/api/outbox/drain`), UI polls status and retries only on a second Resolve click — guarantee **at-least-once**.  
+**Rejected:** Awaiting `notify()` in-request, fire-and-forget without a DB row, and automatic browser retry loops that re-fix the flaky helper.  
+**Costs:** HTTP 200 on resolve does not mean notify delivered.  
+**Wrong later:** High traffic needs a real worker queue with backoff, not Resolve-click retries.  
 **Commit:** `3cceeb6`
 
 ---
