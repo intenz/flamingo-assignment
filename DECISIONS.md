@@ -26,6 +26,15 @@ Four scored decisions will be written here as they are forced by implementation.
 **Wrong later:** Multi-workspace product UIs will need richer membership caching; the seal should stay server-side.  
 **Commit:** `2f21000`
 
+### 3. Resolve returns immediately; notify is durable outbox, not in-request retries
+
+**Context:** Spec forbids making `notify()` reliable and forbids waiting on it before resolve returns; we are on serverless so work after the response must not assume a long-lived process. Early UI auto-drained the outbox in a poll loop, which felt like hidden retries of the flaky helper and made the page noisy.  
+**Chose:** (1) Persist a `NotifyOutbox` row in the same transaction as `item → resolved`. (2) Schedule one drain via Next.js `after()` (platform `waitUntil`) plus `POST /api/outbox/drain` for ops/cron. (3) UI only **polls status** after resolve; a failed delivery stays visible and a **second Resolve click** re-drains that outbox — no automatic client retry storm. Guarantee named: **at-least-once** while the row is `pending`/`failed` under max attempts (record survives process death; duplicate drains are acceptable).  
+**Rejected:** Awaiting `notify()` in the resolve request (blocks ~1s and fails ~1/5 of resolves); fire-and-forget without a DB row (silent loss on serverless); continuous auto-retry from the browser (re-implements “fix notify” and confuses “retry N” with delivery state).  
+**Costs:** Reviewers must understand Resolve HTTP 200 ≠ notify delivered; Holder keeps `claimedById` as the resolver for display; ops may need the drain route if `after()` is truncated.  
+**Wrong later:** At higher volume you want a real worker/queue, idempotent notify keys, and backoff — not browser-driven Resolve clicks.  
+**Commit:** `e01b3da`
+
 ---
 
 ## Deliberately not done
@@ -59,3 +68,5 @@ _(one line — filled near ship)_
 | 3.1 | Atomic `updateMany` where `status=open`; lost race → `already_claimed` result (not thrown), for tooltip UI in 3.3. |
 | 4.2 | Seal in domain (`assertItemAccess` + claim JOIN Membership); foreign → 403; list requires membership. |
 | 4.3 | Viewer: no action buttons in UI; API still 403 via `roleCanMutate` / claim JOIN. |
+| 5.2 | `NotifyOutbox` + resolve TX; `after()` first drain; no await notify on HTTP resolve. |
+| 5.3 | UI polls outbox status; failed → click Resolve again to re-drain (no auto client retries). |

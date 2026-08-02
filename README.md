@@ -62,4 +62,4 @@ npx vitest run tests/domain/r2-seal.test.ts
 
 ## Status
 
-R1 + R2 done (atomic claim, sealed workspaces, viewer read-only). Next: R3 resolve notifies.
+R1–R3 done (claim once, sealed workspaces, resolve + durable notify outbox). Next: R4 pagination / R5 stale claims / ship docs.
