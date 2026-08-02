@@ -1,33 +1,57 @@
 # Decisions
 
-More entries as we test R1–R5. Format: context / chose / rejected / costs / wrong later.
+Four scored choices. Each: **context** / **chose** / **costs**.
 
 ---
 
-## 0. Clear names, domain folders, thin client islands
+## 1. Concurrent claim on the backend (conditional UPDATE)
 
-**Context:** Vague names and flat dumps made the tree hard to navigate; client files kept pulling server-only code. Need a standing default for the whole app.
+**Context:** Two people can Claim the same open item at once; the UI alone cannot pick a winner.
 
-**Chose:** Name by what the thing *does* in its domain (not UI jargon or opaque helpers). Group files by domain under `components/`, `hooks/`, `lib/`, `app/api/`. RSC owns first paint and data loading; `"use client"` only where there is state, effects, or browser APIs. Shared interactive state lives in one place and is passed down — do not duplicate the same hook for parent and child. Types shared with the client stay free of Prisma/DB imports.
+**Chose:** One atomic backend `UPDATE … WHERE status='open'` (plus membership). Exactly one winner; loser gets `already_claimed` + holder. Code: [`claim.ts`](src/lib/triage/queue/actions/claim.ts) · [`docs/r1-claim-once.md`](docs/r1-claim-once.md).
 
-**Example (queue):** `QueueItemStatus` / `reopenStaleClaims` / `useQueueActions` — not `StatusPill` / `expire…` / `run`. Layout: `components/queue/…`, `hooks/queue/`, `lib/triage/queue/…`, `api/queue/…`. Server renders the first page; client islands patch the row and load more.
-
-**Rejected:** Speculative Context/splits “for purity”; Prisma (or other Node-only modules) in client bundles; full RSC refresh after every small UI mutation when a local patch is enough (see §1).
-
-**Costs:** Longer paths; new code must land in the right domain folder.
-
-**Wrong later:** Cross-tab / realtime sync still needs an invalidation story — structure alone won’t fix that.
+**Costs:** Other open tabs still need a click/refresh to see the new holder.
 
 ---
 
-## 1. Server shell, client row updates
+## 2. Notify delivery via a second Resolve click
 
-**Context:** First paint needs auth + queue from the server; every Claim/Resolve must not reload the whole page.
+**Context:** `notify()` is flaky on purpose; resolve must not wait on it, and failures must stay visible.
 
-**Chose:** RSC loads session, picker users, and the first table page ([`page.tsx`](src/app/page.tsx)). Claim/Resolve/Release only patch the row on the client ([`useQueueActions.ts`](src/hooks/queue/useQueueActions.ts)). User switch does one server refresh ([`UserPicker.tsx`](src/components/session/UserPicker.tsx)).
+**Chose:** Durable outbox on resolve; first drain after the response; if it fails, user clicks **Resolve** again to retry. Code: [`resolve.ts`](src/lib/triage/queue/actions/resolve.ts) · [`docs/r3-resolving-notifies.md`](docs/r3-resolving-notifies.md).
 
-**Rejected:** `router.refresh()` after every row action (slow; wastes App Router).
+**Costs:** Users are pulled back to retry delivery instead of only triage work.
 
-**Costs:** Other tabs / deeper pages can lag until the next navigation.
+---
 
-**Wrong later:** Heavy multiplayer needs invalidation or realtime, not only local row state.
+## 3. Domain folders and clear names
+
+**Context:** Flat dumps and vague names (`StatusPill`, `run`, `expire…`) made the tree hard to own.
+
+**Chose:** Group by domain (`components/queue/`, `hooks/queue/`, `lib/triage/queue/…`, `api/queue/…`) and name by job (`reopenStaleClaims`, `useQueueActions`, `listQueue`).
+
+**Costs:** Longer paths; every new file must land in the right folder.
+
+---
+
+## 4. Docs that explain the product
+
+**Context:** Reviewers (and future us) need to run and understand R1–R5 without reverse-engineering the repo.
+
+**Chose:** Slim README + per-req notes (`docs/r1`…`r5`) + this file and `AI_USAGE.md`.
+
+**Costs:** Docs drift unless updated when behaviour changes.
+
+---
+
+## Deliberately not done
+
+1. **Live claim sync** — no WebSockets / reactive DB; the other user does not see a new holder until they act or refresh.
+2. **Server-side notify retry + ops logs** — no worker with backoff or failure dashboards; retry is still a second Resolve click.
+3. **Storybook / shared UI kit** — no visual component library yet; only markdown docs for how the product works.
+
+---
+
+## Day-one refactor
+
+I'd start improving the project by extracting **shared UI components** for the team, adding **list virtualization** (windowing) on the queue table, splitting the fat hooks [`useQueueActions.ts`](src/hooks/queue/useQueueActions.ts) / [`useQueueNotifyOutbox.ts`](src/hooks/queue/useQueueNotifyOutbox.ts) into small helpers, plus **SEO** (metadata / Open Graph) and broader **performance** work (caching, bundle size, Core Web Vitals).

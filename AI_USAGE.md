@@ -7,30 +7,42 @@ Required write-up for the Flamingo assignment.
 - **Scaffold** — Next.js 16, Node 24, Prisma 7, seed (~10k), Vitest.
 - **Shell** — signed cookie picker, queue UI, claim/resolve/release routes.
 - **Domain (R1–R5)** — atomic claim, workspace ACL, notify outbox, keyset list, stale-claim sweep.
-- **Refactor** — split hooks (`useQueueActions` / `useQueueNotifyOutbox` / `useQueueLoadMore`), shared API helpers, holder gate.
 - **Docs** — PLAN, ARCHITECTURE, DECISIONS, README, `docs/r1`…`r5`.
 
-## Two disagreements
+AI drafted essentially the full assignment surface. Delivery was **fast but chaotic**: flat folders, opaque names (`StatusPill`, `run`, `expire…`), mixed server/client imports, and weak defaults around App Router caching / refresh. We had to **re-read the tree by hand** and tighten behaviour — not rewrite the domain from scratch.
 
-### 1. Seed statuses looked “all resolved” on page one
+## What we fixed after AI (manual pass)
 
-**AI suggested:** assign statuses in blocks by index (open → claimed → resolved).
+| Area | AI left behind | We did |
+|------|----------------|--------|
+| **File architecture** | Flat `components/`, `lib/triage/*` dump | Domain folders: `components/queue/…`, `hooks/queue/`, `lib/triage/queue/…`, `api/queue/…` |
+| **Naming** | UI jargon / vague helpers | Names by job: `QueueItemStatus`, `reopenStaleClaims`, `deliverNotifyOutbox`, `listQueue` |
+| **Shared types / constants** | Scattered literals + duplicate status unions | `queue-types.ts` + `queue-constants.ts` (Prisma-free for client) |
+| **Next.js caching / RSC** | Urge to `router.refresh()` after every claim; risk of pulling Prisma into client | RSC first page (`loadInitialQueueForSession`); row actions **patch locally**; refresh only on user switch; no DB modules in client islands |
 
-**We did instead:** shuffle a status deck so newest-first pages show a mixed queue.
+Standing defaults: [`DECISIONS.md`](DECISIONS.md) §0–§1 · [`.cursor/rules/architecture-defaults.mdc`](.cursor/rules/architecture-defaults.mdc).
 
-**Why:** reviewers open the app and see the first 50 rows; a solid block of `resolved` lies about the product.
+## Two disagreements (product)
 
-**Where:** [`prisma/seed.ts`](prisma/seed.ts) (status deck + deterministic shuffle).
+### 1. Resolved items and who did the work
 
-### 2. Client-side clock for stale claims
+**AI suggested:** drop / clear resolved rows from the useful queue view (and clear the holder on resolve), so the list stayed “active only.”
 
-**AI suggested:** poll a snapshot API and/or start a `CLAIM_TTL_MS` timer after Claim so the UI flips open on its own.
+**We did instead:** keep resolved in the newest-first queue and leave `claimedById` on the row as **who resolved**, so Holder still names the person.
 
-**We did instead:** expiry stays **server-only** (list / claim / `POST /api/queue/queue-reopen-claim`). The UI updates on refresh or the next mutation.
+**Why:** hiding resolved lied about history; clearing the holder made it impossible to see who finished the item.
 
-**Why:** one source of truth; matches “no daemon on Vercel” without pretending the browser is the clock.
+**Where:** [`src/lib/triage/queue/actions/resolve.ts`](src/lib/triage/queue/actions/resolve.ts) · [`src/lib/triage/queue/format-queue-item.ts`](src/lib/triage/queue/format-queue-item.ts)
 
-**Where:** [`src/lib/triage/queue/actions/reopen-stale-claims.ts`](src/lib/triage/queue/actions/reopen-stale-claims.ts) · [`docs/r5-stale-claims.md`](docs/r5-stale-claims.md) · no client TTL in [`src/hooks/queue/useQueueActions.ts`](src/hooks/queue/useQueueActions.ts)
+### 2. Pagination: pages vs Load more
+
+**AI suggested:** classic page numbers (page 1 / 2 / 3) over the queue.
+
+**We did instead:** keyset list + a **Load more** button that appends the next older page.
+
+**Why:** numbered pages break when the queue moves under you (duplicates / skips). Load more + `after=<id>` stays stable on ~10k rows.
+
+**Where:** [`src/lib/triage/queue/queue.ts`](src/lib/triage/queue/queue.ts) · [`src/hooks/queue/useQueueLoadMore.ts`](src/hooks/queue/useQueueLoadMore.ts) · [`docs/r4-pagination.md`](docs/r4-pagination.md)
 
 ## How we verified output
 
@@ -41,3 +53,4 @@ Required write-up for the Flamingo assignment.
 | Per-req slices | `npx vitest run tests/domain/claim.test.ts` (and `r2-seal`, `outbox`, `r4-keyset`, `r5-stale`) |
 | R4 EXPLAIN | OFFSET vs keyset on 10k rows → [`docs/r4-pagination.md`](docs/r4-pagination.md) |
 | Manual UI | claim race, Dave viewer, Resolve/notify notice, Load more |
+| Architecture pass | Full file review + rename/move; `tsc`; smoke queue claim/resolve/notify UI |
